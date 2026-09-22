@@ -250,6 +250,10 @@ CPU observation does not.
 
 ## Independent QEMU differential
 
+For direct execution of an externally supplied image, the
+[standalone runner](STANDALONE.md) exports VER-009 exception events and final
+state without invoking this differential or consuming its expected files.
+
 `make -C scripts integ-qemu_diff` builds
 `verification/programs/qemu_diff.S` for `-march=armv4t`, executes the linked
 image with `qemu-system-arm` on the ARM926 model using one guest instruction

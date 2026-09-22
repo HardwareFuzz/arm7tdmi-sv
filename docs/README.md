@@ -7,6 +7,10 @@ because they agree with each other.
 
 ## Documents
 
+- **[STANDALONE.md](STANDALONE.md)** — execute a supplied ARM/Thumb image on
+  the RTL and capture observed exceptions plus final registers/RAM without
+  a reference simulator or golden-state files.
+
 - **[PIPELINE.md](PIPELINE.md)** — 3-stage F/D/E pipeline structure, stage registers, bus-cycle overlap in the E substate FSM, the `issue_fetch` `state_next` gate (one of the load-bearing decisions of the whole design), `de_q` staleness traps and the latch protocol.
 - **[TABLE7_MATRIX.md](TABLE7_MATRIX.md)** — audited Table 7-2 summary
   and detailed Tables 7-3 through 7-23 mapped to the full-phase oracle and

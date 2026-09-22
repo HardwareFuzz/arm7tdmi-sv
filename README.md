@@ -129,6 +129,17 @@ and `DBGINSTRVALID`; software breakpoints use EmbeddedICE-RT comparison.
 
 ## Build and verification
 
+To execute your own ARMv4T image and export exceptions, registers, and RAM,
+use the HardwareFuzz fork's [standalone runner](docs/STANDALONE.md):
+
+```sh
+make -C scripts standalone-build STANDALONE_JOBS=8
+```
+
+It runs the supplied program directly on the RTL without QEMU or expected
+state files. The linked guide includes a complete example and the JSONL
+result contract.
+
 The supported simulator/linter is Verilator 5.x. The checked FPGA
 characterization uses Quartus Lite 17.0.2. Run commands from the repository
 root:

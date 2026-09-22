@@ -70,6 +70,9 @@ RANDOM_OBJ_DIR := $(OBJ_DIR)/constrained_random
 RANDOM_DIFF_BIN := $(RANDOM_OBJ_DIR)/diff/Varm7tdmis_random_diff_tb
 RANDOM_POLICY_BIN := $(RANDOM_OBJ_DIR)/policy/Varm7tdmis_random_policy_tb
 RANDOM_REPORT := ../reports/generated/constrained-random-report.json
+STANDALONE_JOBS ?= 8
+STANDALONE_DIR := $(OBJ_DIR)/standalone
+STANDALONE_BIN := $(STANDALONE_DIR)/Varm7tdmis_standalone_tb
 RANDOM_EVENT_SEEDS ?= 32
 RANDOM_EVENT_OBJ_DIR := $(OBJ_DIR)/random_events
 RANDOM_EVENT_BIN := \
@@ -368,6 +371,24 @@ formal:
 	PYTHONPATH=. $(PYTHON) formal_report.py \
 	    --jobs $(FORMAL_JOBS) --output $(FORMAL_REPORT)
 
+# Run a supplied image without building or invoking the QEMU scoreboards.
+$(STANDALONE_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
+                   ../tb/integration/arm7tdmis_memory.sv \
+                   ../tb/integration/arm7tdmis_standalone_tb.sv
+	mkdir -p $(STANDALONE_DIR)
+	$(VERILATOR) $(VFLAGS_COMMON) --binary -j $(STANDALONE_JOBS) \
+	    -Wno-SYNCASYNCNET -DARM7TDMIS_VERIFICATION \
+	    --top-module arm7tdmis_standalone_tb --Mdir $(STANDALONE_DIR) \
+	    -f $(SIM_F) ../tb/integration/arm7tdmis_memory.sv \
+	    ../tb/integration/arm7tdmis_standalone_tb.sv
+
+.PHONY: standalone-build standalone-test
+standalone-build: $(STANDALONE_BIN)
+
+standalone-test: standalone-build
+	ARM7_STANDALONE_BINARY=$(abspath $(STANDALONE_BIN)) \
+	    $(PYTHON) -m unittest discover -s tests -p test_standalone_runner.py -v
+
 # VAL-002 builds the scoreboards once, then generates fresh source/reference
 # images and executes every deterministic seed through both oracle lanes.
 $(RANDOM_DIFF_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
@@ -621,6 +642,8 @@ help:
 	@echo "  ac-timing validate every Chapter 8/Table 8-1 FPGA disposition"
 	@echo "  mister-framework build the CPU in the pinned official MiSTer project"
 	@echo "  formal       prove VAL-007 and reach every VAL-008 cover obligation"
+	@echo "  standalone-build build the supplied-program runner (no QEMU)"
+	@echo "  standalone-test verify standalone execution and JSONL capture"
 	@echo "  random-validation run 32 x 256-instruction constrained-random seeds"
 	@echo "  random-events run 32 all-class external-event seeds"
 	@echo "  soak         run 256 deterministic sanitizer/X-propagation seeds"
