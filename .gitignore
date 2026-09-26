@@ -1,5 +1,6 @@
 # Verilator build output
 obj_dir/
+/verification/constrained_random_rs/target/
 /.tools/
 
 # Simulation artifacts

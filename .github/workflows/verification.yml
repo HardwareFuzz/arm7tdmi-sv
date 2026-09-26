@@ -15,11 +15,14 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Historical FPGA evidence verifies the checker blobs at its pinned commit.
+          fetch-depth: 0
       - name: Install open-source verification tools
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential clang curl lld llvm make \
-            python3 qemu-system-arm verilator xz-utils
+            qemu-system-arm verilator xz-utils
       - name: Install pinned SystemVerilog frontend
         run: |
           mkdir -p "$GITHUB_WORKSPACE/.tools"
@@ -33,6 +36,8 @@ jobs:
           echo "$GITHUB_WORKSPACE/.tools" >> "$GITHUB_PATH"
       - name: Run fail-hard simulation regression
         run: make -C scripts regress-ci
+      - name: Verify Rust ARM7 reference and random engine
+        run: cargo test --locked --manifest-path verification/constrained_random_rs/Cargo.toml
       - name: Reproduce quick constrained-random gate
         run: make -C scripts random-validation-quick
       - name: Measure representative RTL coverage
@@ -71,7 +76,7 @@ jobs:
       - name: Install open-source verification tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential make python3 verilator
+          sudo apt-get install --yes build-essential make verilator
       - name: Kill architectural-control mutants
         run: make -C scripts mutation-self-test
 
@@ -81,7 +86,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install pinned formal toolchain
-        run: python3 scripts/install_oss_cad_suite.py
+        run: cargo run --release --locked --manifest-path verification/constrained_random_rs/Cargo.toml -- oss-cad-suite-install
       - name: Prove safety/liveness and close bounded covers
         run: make -C scripts formal
       - name: Preserve formal report, logs, and cover witnesses
@@ -103,7 +108,7 @@ jobs:
       - name: Install randomized-event verification tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential make python3 verilator
+          sudo apt-get install --yes build-essential make verilator
       - name: Run all-class randomized external-event campaign
         run: make -C scripts random-events
       - name: Preserve event report and per-seed logs
@@ -125,7 +130,7 @@ jobs:
       - name: Install sanitizer verification tools
         run: |
           sudo apt-get update
-          sudo apt-get install --yes build-essential make python3 verilator
+          sudo apt-get install --yes build-essential make verilator
       - name: Run deterministic sanitizer and X-state soak
         run: make -C scripts soak
       - name: Preserve soak report and any minimized reproducer

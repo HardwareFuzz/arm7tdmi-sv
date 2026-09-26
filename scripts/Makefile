@@ -16,7 +16,6 @@ LOCAL_SLANG := $(firstword $(wildcard ../.tools/slang \
 	../.tools/slang-11.0/slang))
 SLANG     ?= $(if $(LOCAL_SLANG),$(LOCAL_SLANG),slang)
 GTKWAVE   ?= gtkwave
-PYTHON    ?= python3
 CLANG     ?= clang
 LLVM_OBJCOPY ?= llvm-objcopy
 LLVM_NM   ?= llvm-nm
@@ -70,6 +69,12 @@ RANDOM_OBJ_DIR := $(OBJ_DIR)/constrained_random
 RANDOM_DIFF_BIN := $(RANDOM_OBJ_DIR)/diff/Varm7tdmis_random_diff_tb
 RANDOM_POLICY_BIN := $(RANDOM_OBJ_DIR)/policy/Varm7tdmis_random_policy_tb
 RANDOM_REPORT := ../reports/generated/constrained-random-report.json
+RANDOM_RUST_MANIFEST := ../verification/constrained_random_rs/Cargo.toml
+RANDOM_RUST_BIN := ../verification/constrained_random_rs/target/release/arm7-constrained-random
+RANDOM_RUST_SOURCES := $(RANDOM_RUST_MANIFEST) \
+	../verification/constrained_random_rs/Cargo.lock \
+	$(shell find ../verification/constrained_random_rs/src -type f \
+		\( -name '*.rs' -o -name '*.json' \))
 STANDALONE_JOBS ?= 8
 STANDALONE_DIR := $(OBJ_DIR)/standalone
 STANDALONE_BIN := $(STANDALONE_DIR)/Varm7tdmis_standalone_tb
@@ -126,16 +131,16 @@ INTEG_COMMON_SRCS := \
 INTEG_EXTRA_FLAGS_retire_interface := -DARM7TDMIS_VERIFICATION
 INTEG_EXTRA_FLAGS_mister_savestate := -DARM7TDMIS_SAVE_STATE
 INTEG_EXTRA_FLAGS_qemu_diff := -DARM7TDMIS_VERIFICATION -I$(QEMU_DIFF_DIR)
-INTEG_PREP_qemu_diff = $(PYTHON) ../verification/qemu_armv4t_reference.py \
+INTEG_PREP_qemu_diff = $(abspath $(RANDOM_RUST_BIN)) reference \
 	--output $(QEMU_DIFF_DIR) --clang $(CLANG) \
 	--objcopy $(LLVM_OBJCOPY) --nm $(LLVM_NM) --qemu $(QEMU_SYSTEM_ARM)
 INTEG_RUN_ARGS_qemu_diff = \
 	+PROGRAM_HEX=$(abspath $(QEMU_DIFF_DIR)/program.hex) \
 	+EXPECTED_HEX=$(abspath $(QEMU_DIFF_DIR)/expected.hex)
 INTEG_EXTRA_FLAGS_compiler := -DARM7TDMIS_VERIFICATION
-INTEG_PREP_compiler = $(PYTHON) ../scripts/install_arm_toolchain.py \
+INTEG_PREP_compiler = $(abspath $(RANDOM_RUST_BIN)) arm-toolchain-install \
 	--root $(ARM_TOOLCHAIN_ROOT) && \
-	$(PYTHON) ../scripts/build_compiler_program.py \
+	$(abspath $(RANDOM_RUST_BIN)) compiler-program-build \
 	--toolchain $(ARM_TOOLCHAIN) --output $(COMPILER_DIR)
 INTEG_RUN_ARGS_compiler = \
 	+PROGRAM_HEX=$(abspath $(COMPILER_DIR)/program.hex)
@@ -183,21 +188,25 @@ lint-generic-soc-slang:
 	$(SLANG) --allow-use-before-declare \
 	    --top arm7tdmi_generic_soc -f $(SIM_F) $(GENERIC_SOC)
 
-generic-soc-rom-check:
-	$(PYTHON) install_arm_toolchain.py --root $(ARM_TOOLCHAIN_ROOT)
-	$(PYTHON) check_generic_soc_rom.py --toolchain $(ARM_TOOLCHAIN)
+generic-soc-rom-check: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) arm-toolchain-install \
+	    --root $(ARM_TOOLCHAIN_ROOT)
+	$(abspath $(RANDOM_RUST_BIN)) generic-soc-rom-check \
+	    --toolchain $(ARM_TOOLCHAIN)
 
-generic-soc-rom-artifacts:
-	$(PYTHON) install_arm_toolchain.py --root $(ARM_TOOLCHAIN_ROOT)
-	$(PYTHON) check_generic_soc_rom.py --toolchain $(ARM_TOOLCHAIN) \
+generic-soc-rom-artifacts: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) arm-toolchain-install \
+	    --root $(ARM_TOOLCHAIN_ROOT)
+	$(abspath $(RANDOM_RUST_BIN)) generic-soc-rom-check \
+	    --toolchain $(ARM_TOOLCHAIN) \
 	    --output $(GENERIC_SOC_ROM_OUTPUT)
 
-lint-independent:
-	PYTHONPATH=. $(PYTHON) independent_lint.py \
+lint-independent: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) independent-lint \
 	    --slang $(SLANG) --output $(INDEPENDENT_LINT_REPORT)
 
-cdc-rdc:
-	PYTHONPATH=. $(PYTHON) cdc_rdc_check.py --check \
+cdc-rdc: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) cdc-rdc --check \
 	    --output $(CDC_RDC_REPORT)
 
 fpga-quality: lint-independent cdc-rdc
@@ -218,24 +227,24 @@ quartus-analysis:
 	    arm7tdmi_mister -c arm7tdmi_mister
 
 # Complete selected-device flow: synthesis, fit, TimeQuest, and assembly.
-quartus-compile:
+quartus-compile: $(RANDOM_RUST_BIN)
 	cd ../fpga && $(QUARTUS_SH) --flow compile arm7tdmi_mister
 	cd ../fpga && $(QUARTUS_POW) arm7tdmi_mister \
 	    --read_settings_files=on --write_settings_files=off \
 	    --use_vectorless_estimation=on
-	PYTHONPATH=. $(PYTHON) quartus_report_check.py ../fpga/output_files
+	$(abspath $(RANDOM_RUST_BIN)) quartus-report-check ../fpga/output_files
 
 quartus-conformance-analysis:
 	cd ../fpga && $(QUARTUS_MAP) --analysis_and_elaboration \
 	    --read_settings_files=on --write_settings_files=off \
 	    arm7tdmis_conformance -c arm7tdmis_conformance
 
-quartus-conformance-compile:
+quartus-conformance-compile: $(RANDOM_RUST_BIN)
 	cd ../fpga && $(QUARTUS_SH) --flow compile arm7tdmis_conformance
 	cd ../fpga && $(QUARTUS_POW) arm7tdmis_conformance \
 	    --read_settings_files=on --write_settings_files=off \
 	    --use_vectorless_estimation=on
-	PYTHONPATH=. $(PYTHON) quartus_report_check.py \
+	$(abspath $(RANDOM_RUST_BIN)) quartus-report-check \
 	    --project arm7tdmis_conformance \
 	    --top arm7tdmis_top \
 	    --max-alm 7500 \
@@ -244,7 +253,7 @@ quartus-conformance-compile:
 	    --max-memory-bit 0 \
 	    ../fpga/conformance_output_files
 
-quartus-option-characterization:
+quartus-option-characterization: $(RANDOM_RUST_BIN)
 	@set -eu; \
 	for project in $(OPTION_PROJECTS); do \
 	    cd ../fpga; \
@@ -254,20 +263,20 @@ quartus-option-characterization:
 	        --use_vectorless_estimation=on; \
 	    cd ../scripts; \
 	done
-	PYTHONPATH=. $(PYTHON) quartus_option_characterization.py
+	$(abspath $(RANDOM_RUST_BIN)) quartus-option-characterization
 
 # FPGA-006 uses temporary little- and big-endian synthesis projects so the
 # production QSFs are never rewritten by the EDA netlist writer.
-postfit-sim:
-	PYTHONPATH=. $(PYTHON) postfit_sim.py \
+postfit-sim: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) postfit-sim \
 	    --output $(POSTFIT_REPORT) \
 	    --quartus-map $(QUARTUS_MAP) \
 	    --quartus-fit $(QUARTUS_FIT) \
 	    --quartus-eda $(QUARTUS_EDA) \
 	    --verilator $(VERILATOR)
 
-mister-framework:
-	PYTHONPATH=. $(PYTHON) mister_framework_build.py \
+mister-framework: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) mister-framework \
 	    --quartus-sh $(QUARTUS_SH) \
 	    --output $(MISTER_FRAMEWORK_REPORT) \
 	    --artifact-dir $(MISTER_FRAMEWORK_ARTIFACT_DIR)
@@ -325,6 +334,9 @@ endef
 
 $(foreach t,$(INTEG_TESTS),$(eval $(call INTEG_RULE,$(t))))
 
+integ-qemu_diff: $(RANDOM_RUST_BIN)
+integ-compiler: $(RANDOM_RUST_BIN)
+
 integ: $(addprefix integ-, $(INTEG_TESTS))
 
 errata: $(addprefix integ-, $(ERRATA_TESTS))
@@ -340,8 +352,8 @@ $(PUBLIC_SUITE_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
 
 public-suite-build: $(PUBLIC_SUITE_BIN)
 
-public-suite: public-suite-build
-	PYTHONPATH=../verification $(PYTHON) ../verification/public_suite.py \
+public-suite: public-suite-build $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) public-suite \
 	    --binary $(abspath $(PUBLIC_SUITE_BIN)) \
 	    --manifest ../verification/public_suites.json \
 	    --output $(PUBLIC_SUITE_REPORT) $(PUBLIC_SUITE_ARGS)
@@ -349,26 +361,25 @@ public-suite: public-suite-build
 # VAL-004 is deliberately a full-regression-only aggregate. It consumes the
 # already completed directed phases and rejects missing, stale, unhashed, or
 # marker-free Chapter 7 cross evidence.
-table7-cross:
-	PYTHONPATH=../verification $(PYTHON) ../verification/table7_cross.py \
+table7-cross: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) table7-cross \
 	    --manifest verification/table7_cross.json \
 	    --regression $(REGRESSION_REPORT) \
 	    --output reports/generated/table7-cross-report.json
 
 # VAL-006 consumes the exhaustive decoder/policy phases from the current
 # clean full regression and closes the independently enumerated required bins.
-functional-coverage:
-	PYTHONPATH=../verification $(PYTHON) \
-	    ../verification/functional_coverage.py \
+functional-coverage: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) functional-coverage \
 	    --manifest verification/functional_coverage.json \
 	    --regression $(REGRESSION_REPORT) \
 	    --output reports/generated/functional-coverage-report.json
 
 # VAL-007/VAL-008 use a release-pinned OSS CAD Suite archive and fail unless
 # every required proof and every named bounded cover statement closes.
-formal:
-	$(PYTHON) install_oss_cad_suite.py
-	PYTHONPATH=. $(PYTHON) formal_report.py \
+formal: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) oss-cad-suite-install
+	$(abspath $(RANDOM_RUST_BIN)) formal-report \
 	    --jobs $(FORMAL_JOBS) --output $(FORMAL_REPORT)
 
 # Run a supplied image without building or invoking the QEMU scoreboards.
@@ -385,9 +396,9 @@ $(STANDALONE_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
 .PHONY: standalone-build standalone-test
 standalone-build: $(STANDALONE_BIN)
 
-standalone-test: standalone-build
-	ARM7_STANDALONE_BINARY=$(abspath $(STANDALONE_BIN)) \
-	    $(PYTHON) -m unittest discover -s tests -p test_standalone_runner.py -v
+standalone-test: standalone-build $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) standalone-contract \
+	    --binary $(abspath $(STANDALONE_BIN))
 
 # VAL-002 builds the scoreboards once, then generates fresh source/reference
 # images and executes every deterministic seed through both oracle lanes.
@@ -412,10 +423,13 @@ $(RANDOM_POLICY_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
 	    ../tb/integration/arm7tdmis_memory.sv \
 	    ../tb/integration/arm7tdmis_random_policy_tb.sv
 
-random-validation-build: $(RANDOM_DIFF_BIN) $(RANDOM_POLICY_BIN)
+$(RANDOM_RUST_BIN): $(RANDOM_RUST_SOURCES)
+	cargo build --release --locked --manifest-path $(RANDOM_RUST_MANIFEST)
+
+random-validation-build: $(RANDOM_DIFF_BIN) $(RANDOM_POLICY_BIN) $(RANDOM_RUST_BIN)
 
 random-validation: random-validation-build
-	PYTHONPATH=../verification $(PYTHON) ../verification/constrained_random.py \
+	$(abspath $(RANDOM_RUST_BIN)) campaign \
 	    --differential-binary $(abspath $(RANDOM_DIFF_BIN)) \
 	    --policy-binary $(abspath $(RANDOM_POLICY_BIN)) \
 	    --output $(RANDOM_REPORT) \
@@ -424,7 +438,7 @@ random-validation: random-validation-build
 	    --qemu $(QEMU_SYSTEM_ARM)
 
 random-validation-quick: random-validation-build
-	PYTHONPATH=../verification $(PYTHON) ../verification/constrained_random.py \
+	$(abspath $(RANDOM_RUST_BIN)) campaign \
 	    --differential-binary $(abspath $(RANDOM_DIFF_BIN)) \
 	    --policy-binary $(abspath $(RANDOM_POLICY_BIN)) \
 	    --output $(RANDOM_REPORT) \
@@ -446,8 +460,8 @@ $(RANDOM_EVENT_BIN): Makefile $(SIM_F) $(RTL_SRCS) \
 
 random-events-build: $(RANDOM_EVENT_BIN)
 
-random-events: random-events-build
-	PYTHONPATH=../verification $(PYTHON) ../verification/random_events.py \
+random-events: random-events-build $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) random-events \
 	    --binary $(abspath $(RANDOM_EVENT_BIN)) \
 	    --seeds $(RANDOM_EVENT_SEEDS) \
 	    --output $(RANDOM_EVENT_REPORT)
@@ -470,8 +484,8 @@ $(SOAK_BIN): Makefile $(SIM_F) $(RTL_SRCS) $(INTEG_COMMON_SRCS) \
 
 soak-build: $(SOAK_BIN)
 
-soak: soak-build
-	PYTHONPATH=. $(PYTHON) soak_harness.py \
+soak: soak-build $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) soak \
 	    --binary $(abspath $(SOAK_BIN)) \
 	    --seeds $(SOAK_SEEDS) \
 	    --output $(SOAK_REPORT)
@@ -496,7 +510,7 @@ $(foreach t,$(COVERAGE_TESTS),$(eval $(call COVERAGE_RULE,$(t))))
 
 .PHONY: $(addprefix coverage-run-, $(COVERAGE_TESTS))
 
-coverage:
+coverage: $(RANDOM_RUST_BIN)
 	rm -rf $(COVERAGE_OBJ_DIR) $(COVERAGE_REPORT_DIR)
 	mkdir -p $(COVERAGE_OBJ_DIR) $(COVERAGE_REPORT_DIR)
 	@set -eu; \
@@ -507,51 +521,51 @@ coverage:
 	    $(COVERAGE_RAW_FILES)
 	$(VERILATOR_COVERAGE) --write-info $(COVERAGE_REPORT_DIR)/coverage.info \
 	    $(COVERAGE_REPORT_DIR)/coverage.dat
-	PYTHONPATH=. $(PYTHON) coverage_report.py \
+	$(abspath $(RANDOM_RUST_BIN)) coverage-report \
 	    --raw $(COVERAGE_REPORT_DIR)/coverage.dat \
 	    --lcov $(COVERAGE_REPORT_DIR)/coverage.info \
 	    --output $(COVERAGE_REPORT_DIR)/coverage.json \
 	    --tests "$(COVERAGE_TESTS)"
 
-traceability:
-	PYTHONPATH=. $(PYTHON) traceability_report.py --check \
+traceability: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) traceability-report --check \
 	    --output $(TRACEABILITY_REPORT)
 
-trm-coverage:
-	PYTHONPATH=. $(PYTHON) trm_coverage.py --check \
+trm-coverage: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) trm-coverage --check \
 	    --output $(TRM_COVERAGE_REPORT)
 
-ac-timing:
-	PYTHONPATH=. $(PYTHON) ac_timing.py --check \
+ac-timing: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) ac-timing --check \
 	    --output $(AC_TIMING_REPORT)
 
 # Release-facing entry point. The runner always starts clean, records the
 # complete source/tool/variant/seed manifest, executes every phase separately,
 # and atomically updates a machine-readable JSON result with per-phase logs.
-regress:
-	PYTHONPATH=. $(PYTHON) regression_harness.py \
+regress: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) regression \
 	    --unit-tests "$(UNIT_TESTS)" \
 	    --integration-tests "$(INTEG_TESTS)"
 
-regress-quick:
-	PYTHONPATH=. $(PYTHON) regression_harness.py --quick \
+regress-quick: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) regression --quick \
 	    --unit-tests "$(UNIT_TESTS)" \
 	    --integration-tests "$(INTEG_TESTS)"
 
 # Open-source CI uses the same report contract but cannot claim the Quartus
 # phases. The report's scope and empty FPGA manifest make that distinction
 # machine-readable.
-regress-ci:
-	PYTHONPATH=. $(PYTHON) regression_harness.py --quick --simulation-only \
+regress-ci: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) regression --quick --simulation-only \
 	    --variant ci-open-source \
 	    --unit-tests "$(UNIT_TESTS)" \
 	    --integration-tests "$(INTEG_TESTS)"
 
-release-evidence:
-	PYTHONPATH=. $(PYTHON) release_evidence.py
+release-evidence: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) release-evidence
 
 harness-unit:
-	PYTHONPATH=. $(PYTHON) -m unittest discover -s tests -p 'test_*.py' -v
+	cargo test --locked --manifest-path $(RANDOM_RUST_MANIFEST) --all-targets -- --test-threads=1
 
 harness-self-test:
 	mkdir -p $(OBJ_DIR)
@@ -602,8 +616,8 @@ raw-checker-self-test:
 	    echo "[raw-checker-self-test/$$case_name] PASS"; \
 	done
 
-mutation-self-test:
-	PYTHONPATH=. $(PYTHON) mutation_harness.py
+mutation-self-test: $(RANDOM_RUST_BIN)
+	$(abspath $(RANDOM_RUST_BIN)) mutation-self-test --scripts-dir .
 
 clean:
 	rm -rf $(OBJ_DIR) $(RUN_ARTIFACTS)

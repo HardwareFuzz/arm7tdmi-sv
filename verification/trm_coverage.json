@@ -236,8 +236,8 @@
       "requirements": ["FPGA-009"],
       "evidence": [
         "verification/ac_timing.json",
-        "scripts/ac_timing.py",
-        "scripts/tests/test_ac_timing_contract.py",
+        "verification/constrained_random_rs/src/ac_timing.rs",
+        "verification/constrained_random_rs/src/ac_timing_reference.json",
         "fpga/arm7tdmis_conformance.sdc",
         "docs/AC_TIMING.md"
       ],

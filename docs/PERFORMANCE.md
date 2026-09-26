@@ -138,15 +138,19 @@ make -C scripts quartus-option-characterization
 ```
 
 Each target runs synthesis, fit, assembly, four-corner TimeQuest, and
-vectorless PowerPlay. The first two call `scripts/quartus_report_check.py`
-directly; the option target applies the same checker to all four fits through
-`scripts/quartus_option_characterization.py`. Each option profile uses Quartus
+vectorless PowerPlay. The first two call the Rust `quartus-report-check`
+command directly; the option target applies the same checker to all four fits
+through the Rust `quartus-option-characterization` command. Each option profile uses Quartus
 Auto Fit so a single placement that misses the common 0.25 ns synchronous
 input-hold contract is retried without weakening that boundary requirement.
 The checked snapshot records the producing commit and commands and hashes all
-characterization inputs, so a source, constraint, project, top, or checker
-change makes `make -C scripts harness-unit` fail until fresh fit evidence is
-reviewed and deliberately published.
+historical characterization inputs. The two Python checker files named in that
+snapshot are verified from the recorded Git commit, preserving their original
+hashes after the live entry points moved to Rust. Current source, constraint,
+project, or top changes still make `make -C scripts harness-unit` fail until
+fresh fit evidence is reviewed and deliberately published. The Rust checker
+is covered by its own parser and mutation tests; the historical fit does not
+claim to have been run with the Rust checker.
 The checks fail on missing
 stages or images, unexpected top/device, resource-budget overruns, missing
 clock-enable/Fmax/power evidence, negative slack, unconstrained setup/hold

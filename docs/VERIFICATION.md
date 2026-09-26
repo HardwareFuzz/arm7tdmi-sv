@@ -52,13 +52,13 @@ entry/restart/system-speed points. Prefetch- and data-abort returns are
 distinguished by formal-only origin tracking even though both execute in
 Abort mode. The aggregate is therefore 77 exact cover obligations.
 
-`scripts/formal_report.py` writes `reports/generated/formal-report.json` using
+The Rust `formal-report` command writes `reports/generated/formal-report.json` using
 schema `arm7tdmis-formal-v1`. It records the clean commit state, pinned tool
 identities, manifest/SBY hashes, and a source and task-log hash for every
 obligation. A report passes only with all 14 proofs, all 77 covers, and an
 empty uncovered list. Formal is a mandatory non-quick regression phase,
 runs in scheduled/manual CI, and is archived by release evidence.
-`scripts/release_evidence.py` revalidates the report rather than trusting its
+The Rust `release-evidence` command revalidates the report rather than trusting its
 status, rejecting dirty or stale runs, tool drift, missing obligations,
 uncovered points, or hash changes.
 
@@ -74,8 +74,9 @@ the CPnMREQ bus contract. The sequence-dependency, flags, six-exception LR/PSR,
 and raw-bus tests must respectively kill those mutants. A nonzero compile or
 simulation exit is insufficient: each row must contain its expected
 architectural diagnostic, so a syntax error cannot masquerade as mutation
-coverage. `scripts/tests/test_mutation_harness.py` also proves that a survivor
-and a wrong detector fail orchestration.
+coverage. Rust unit tests in
+`verification/constrained_random_rs/src/mutation_harness.rs` also prove that a
+survivor and a wrong detector fail orchestration.
 
 `.github/workflows/verification.yml` runs the fail-hard open-source regression,
 the raw-bus mutation matrix, representative architectural simulations, and
@@ -90,7 +91,7 @@ Each run atomically updates `reports/generated/regression.json` using schema
 `arm7tdmis-regression-v1`. It records:
 
 - the full Git commit, dirty status, and SHA-256 of local source/build inputs;
-- Verilator, Python, GNU Make, Git, and host-platform versions;
+- Verilator, GNU Make, Git, and host-platform versions;
 - build variant and deterministic seed;
 - the complete lint, harness, unit, integration, and smoke manifests;
 - each phase's command, timestamps, duration, exit status, log path, and
@@ -125,8 +126,9 @@ condition/mode, endian/alignment, deterministic CLKEN holds, abort position,
 and interrupt/exception timing. It excludes only dimensions that do not apply
 to an instruction class; exclusions do not satisfy a required bin.
 
-`verification/table7_cross.py` rejects quick, failed, dirty, stale, duplicate,
-missing-log, hash-mismatched, under-counted, or missing-marker evidence. It
+The Rust `arm7-constrained-random table7-cross` gate rejects quick, failed,
+dirty, stale, duplicate, missing-log, hash-mismatched, under-counted, or
+missing-marker evidence. It
 resolves each manifest entry to a passing `integration-*` result in the live
 full regression, independently hashes its log and owning testbench, and
 requires the count-bearing PASS expression. The report schema
@@ -148,7 +150,7 @@ return zero errors and zero warnings. Schema
 `arm7tdmis-independent-lint-v1` records the exact executable and source
 hashes, command, diagnostic JSON hash, and result for every top.
 
-The second half runs `scripts/cdc_rdc_check.py` against the reviewed
+The second half runs the Rust `cdc-rdc` command against the reviewed
 `verification/cdc_rdc_manifest.json`. The structural audit inventories every
 production `always_ff`, rejects any clock except `CLK`, rejects unapproved or
 multiple asynchronous resets, forbids legacy `always @` and `always_latch`,
@@ -169,6 +171,11 @@ run in quick and full regression. Release archiving rejects missing, dirty,
 stale, nonzero-warning, structurally incomplete, or input-hash-mismatched
 reports.
 
+The regression runner is implemented in Rust at
+`verification/constrained_random_rs/src/regression.rs`; the Make targets build
+and invoke its `regression` command. It records each phase's result and log
+hash in the atomic `arm7tdmis-regression-v1` report.
+
 `make -C scripts regress-quick` exercises the same metadata, clean-build, lint,
 harness, and smoke path with one unit plus the mandatory QEMU differential and
 pinned-compiler integration tests. Its report is explicitly marked
@@ -187,8 +194,8 @@ line, branch, expression, toggle, and user coverage instrumentation:
 `retire_interface`, `sequence_dependencies`, `arm_exception_lr`, and
 `debug_system_speed`. It preserves each raw database, merges them into
 `reports/generated/coverage/coverage.dat`, writes standard LCOV to
-`coverage.info`, and atomically publishes schema `arm7tdmis-coverage-v1` as
-`coverage.json`.
+`coverage.info`, and uses the Rust `coverage-report` command to atomically
+publish schema `arm7tdmis-coverage-v1` as `coverage.json`.
 
 The JSON identifies the exact tests, Git commit, dirty state, source-input
 SHA-256, Verilator version, raw/LCOV hashes, per-point totals for all elaborated
@@ -258,8 +265,8 @@ state without invoking this differential or consuming its expected files.
 `verification/programs/qemu_diff.S` for `-march=armv4t`, executes the linked
 image with `qemu-system-arm` on the ARM926 model using one guest instruction
 per translation block, then runs the same image on this RTL. QEMU is an
-external implementation: `qemu_armv4t_reference.py` imports no RTL package,
-decoder, or project expected-value function.
+external implementation: the Rust `arm7-constrained-random reference` command
+imports no RTL package, decoder, or project expected-value function.
 
 The measured region has 77 consecutive retirements. It crosses ARM and Thumb,
 passed and failed conditions, immediate and register shifts, multiply,
@@ -299,7 +306,7 @@ independently loaded by QEMU. A release run must contain at least 8,192 such
 retirements.
 
 The second lane isolates behavior on which ARM926 is not an ARM7 oracle.
-For every seed, `constrained_random.py` generates separate little- and
+For every seed, the Rust `arm7-constrained-random` engine generates separate little- and
 big-endian programs with all four legacy word-load alignments, byte lanes,
 aligned halfwords, signed loads, stores, and dependent mutations. Its compact
 architecture-derived memory model predicts only those permitted memory
@@ -313,6 +320,11 @@ hashes, and an exact single-seed reproducer. Full regression runs the 32 × 256
 campaign; quick CI runs `random-validation-quick` with two 64-instruction
 seeds. Release evidence independently revalidates the report strength, every
 input, and every generated artifact hash.
+
+The Rust `arm7-constrained-random` command owns the seed generator, permitted
+memory model, QEMU retirement conversion, simulator execution, timeout handling,
+failure reports, and artifact manifests. `make -C scripts random-validation-quick`
+builds it with Cargo and runs the two-seed gate.
 
 ## Constrained-random external-event campaign
 
@@ -332,17 +344,20 @@ and absent cases complete the `{CPA,CPB}` coverage; `2'b10` is never
 generated. Each event must reach its expected abort/interrupt mode, reset
 state, debug acknowledge, completion, or Undefined path.
 
-Schema `arm7tdmis-random-events-v1` records exact runner/testbench/binary
+The Rust `random-events` runner uses the same verification crate as the
+constrained-random and Chapter 7 campaigns. Schema
+`arm7tdmis-random-events-v1` records exact runner/testbench/binary
 hashes, 16 class bins, 16 matching class-stall bins, ten event bins, at least
 256 per-cycle random decisions per seed, logs, and exact reproducers. The
 full regression and release archive require a clean same-commit 32-seed
-report. `test_random_event_contract.py` mutation-tests the masks, seed
-strength, decision floor, status, and provenance.
+report. Rust unit tests exercise PASS-marker parsing and seed generation;
+`release_evidence/validation_contracts.rs` mutation-tests release evidence
+strength, status, and provenance.
 
 ## ARMv4T required-bin functional coverage
 
 `make -C scripts functional-coverage` is a full-regression aggregate rather
-than simulator line coverage. `functional_coverage.py` independently
+than simulator line coverage. The Rust `functional-coverage` runner independently
 enumerates all 4,096 ARM `[27:20] × [7:4]` decode rows, all 4,096
 `cond=1111` policy rows, and every one of the 65,536 original Thumb
 halfwords. The complete-domain RTL comparisons in `reserved_decode_tb.sv`
@@ -365,7 +380,7 @@ Schema `arm7tdmis-functional-coverage-v1` records all domain totals, required
 and covered bin lists, zero uncovered bins, cited exclusions, exact evidence
 markers, and SHA-256 values for every owning log/source. Full regression and
 release evidence require a clean same-commit report.
-`test_functional_coverage_contract.py` independently mutates domains, groups,
+`release_evidence/closure_contracts.rs` independently mutates domains, groups,
 bins, evidence, exclusions, status, and provenance.
 
 ## Public ARMv4T suite
@@ -442,8 +457,9 @@ byte, halfword, and load/store transaction sequence 64 times, so the test
 also continuously checks request stability and completion while CPU enable
 is low.
 
-Every simulator child has a 30-second timeout, fail-fast `ASAN_OPTIONS` and
-`UBSAN_OPTIONS`, and must exit zero with its exact seed-specific PASS marker.
+The Rust `soak` runner gives every simulator child a 30-second timeout and
+fail-fast `ASAN_OPTIONS` and `UBSAN_OPTIONS`. Each child must exit zero and
+print an exact seed-specific PASS marker.
 The atomically written `arm7tdmis-soak-v1` report records the Git state,
 simulator/host identity, sanitizer and X configuration, binary and testbench
 SHA-256, and each seed's command, duration, exit status, output hash, and PASS
@@ -466,7 +482,8 @@ hashes still match.
 for `arm7tdmi_mister` on `5CSEBA6U23I7`, one with `BIG_ENDIAN=0` and one with
 `BIG_ENDIAN=1`. Each project runs synthesis, fit, and the EDA netlist writer
 with `--functional`; the generated Verilog is then compiled and executed as a
-structural netlist by Verilator. The runner passes
+structural netlist by Verilator. The Rust runner is
+`verification/constrained_random_rs/src/postfit_sim.rs`. It passes
 `--write_settings_files=off`, so Quartus cannot append simulation assignments
 to a checked production QSF.
 

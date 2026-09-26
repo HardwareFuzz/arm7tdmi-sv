@@ -163,7 +163,10 @@ The first command validates all 37 rows, all five figures, the exact PDF
 identity, every percentage and signal group, the Figure 8-4 ambiguity, the
 physical-scope caveat, integration ownership, and the corresponding active
 SDC commands. It writes `reports/generated/ac-timing-report.json` with schema
-`arm7tdmis-ac-timing-v1`. The second runs fitted TimeQuest analysis; the
+`arm7tdmis-ac-timing-v1`. The Rust checker and independent source-row
+reference live in `verification/constrained_random_rs/src/ac_timing.rs` and
+`verification/constrained_random_rs/src/ac_timing_reference.json`. The second
+runs fitted TimeQuest analysis; the
 existing report checker rejects negative setup/hold slack and unconstrained
 paths. The third performs the pinned official-framework compile and applies
 the stricter real-framework report checks described above.

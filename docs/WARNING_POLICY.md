@@ -4,9 +4,10 @@ Every Verilator compile uses `-Wall`; Verilator therefore returns nonzero for
 all warnings that are not listed below. Every simulation compile uses
 `--assert`. Tests use `$fatal` for failed checks and timeouts, never the
 nonfatal `$error` system task. The harness proves that a real simulator
-`$fatal` propagates through Make and Python as a nonzero top-level result.
+`$fatal` propagates through Make and the Rust regression runner as a nonzero
+top-level result.
 
-`scripts/tests/test_warning_policy.py` enforces the complete command-line and
+`verification/constrained_random_rs/src/hdl_source_contract.rs` enforces the complete command-line and
 inline allowlists, paired `lint_off`/`lint_on` pragmas, fatal flags, and the
 absence of `$error`. Adding a warning class requires updating that test and
 this ledger in the same reviewed change.

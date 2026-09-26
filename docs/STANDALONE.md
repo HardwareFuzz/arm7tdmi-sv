@@ -7,7 +7,7 @@ or expected exception list. The existing QEMU differential campaigns remain
 separate verification targets.
 
 The runner is a SystemVerilog testbench compiled into a native executable by
-Verilator. Python is used only by its directed regression tests. It uses the
+Verilator. Rust runs its directed regression tests. It uses the
 public [VER-009 retirement interface](VERIFICATION.md#architectural-retirement-contract)
 for CPU observation and the testbench memory model for RAM contents; it does
 not change the synthesizable CPU RTL or the project's release status.

@@ -74,4 +74,5 @@ This writes `reports/generated/trm-coverage-report.json` with schema
 inventory and disposition totals, and normalized group ownership. The phase
 runs in quick, CI, and full regression. Release evidence independently checks
 the report's clean same-commit identity and all input hashes before archiving
-it.
+it. The checker and its mutation tests are implemented in Rust at
+`verification/constrained_random_rs/src/trm_coverage.rs`.

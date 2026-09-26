@@ -1,0 +1,828 @@
+{
+  "rows": [
+    {
+      "symbol": "tcyc",
+      "parameter": "CLK cycle time",
+      "source_min": "100%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "CLK"
+      ],
+      "target_sdc": {
+        "kind": "clock",
+        "ports": [
+          "CLK"
+        ],
+        "period_ns": 62.5
+      }
+    },
+    {
+      "symbol": "tisclken",
+      "parameter": "CLKEN input setup to rising CLK",
+      "source_min": "40%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "CLKEN"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "CLKEN"
+        ],
+        "delay_ns": -25.0
+      }
+    },
+    {
+      "symbol": "tihclken",
+      "parameter": "CLKEN input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-1",
+      "signals": [
+        "CLKEN"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "CLKEN"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tisabort",
+      "parameter": "ABORT input setup to rising CLK",
+      "source_min": "15%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "ABORT"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "ABORT"
+        ],
+        "delay_ns": -9.375
+      }
+    },
+    {
+      "symbol": "tihabort",
+      "parameter": "ABORT input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-1",
+      "signals": [
+        "ABORT"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "ABORT"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tisrdata",
+      "parameter": "RDATA input setup to rising CLK",
+      "source_min": "10%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "RDATA[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "RDATA[*]"
+        ],
+        "delay_ns": -6.25
+      }
+    },
+    {
+      "symbol": "tihrdata",
+      "parameter": "RDATA input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-1",
+      "signals": [
+        "RDATA[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "RDATA[*]"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tovaddr",
+      "parameter": "Rising CLK to ADDR valid",
+      "source_min": "-",
+      "source_max": "90%",
+      "figure": "8-1",
+      "signals": [
+        "ADDR[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "ADDR[*]"
+        ],
+        "delay_ns": 6.25
+      }
+    },
+    {
+      "symbol": "tohaddr",
+      "parameter": "ADDR hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "ADDR[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "ADDR[*]"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tovctl",
+      "parameter": "Rising CLK to control valid",
+      "source_min": "-",
+      "source_max": "90%",
+      "figure": "8-1",
+      "signals": [
+        "WRITE",
+        "SIZE[1:0]",
+        "PROT[1:0]",
+        "LOCK"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "WRITE",
+          "SIZE[*]",
+          "PROT[*]",
+          "LOCK"
+        ],
+        "delay_ns": 6.25
+      }
+    },
+    {
+      "symbol": "tohctl",
+      "parameter": "Control hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "WRITE",
+        "SIZE[1:0]",
+        "PROT[1:0]",
+        "LOCK"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "WRITE",
+          "SIZE[*]",
+          "PROT[*]",
+          "LOCK"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tovtrans",
+      "parameter": "Rising CLK to transaction type valid",
+      "source_min": "-",
+      "source_max": "50%",
+      "figure": "8-1",
+      "signals": [
+        "TRANS[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "TRANS[*]"
+        ],
+        "delay_ns": 31.25
+      }
+    },
+    {
+      "symbol": "tohtrans",
+      "parameter": "Transaction type hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "TRANS[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "TRANS[*]"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tovwdata",
+      "parameter": "Rising CLK to WDATA valid",
+      "source_min": "-",
+      "source_max": "40%",
+      "figure": "8-1",
+      "signals": [
+        "WDATA[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "WDATA[*]"
+        ],
+        "delay_ns": 37.5
+      }
+    },
+    {
+      "symbol": "tohwdata",
+      "parameter": "WDATA hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-1",
+      "signals": [
+        "WDATA[31:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "WDATA[*]"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tiscpstat",
+      "parameter": "CPA, CPB input setup to rising CLK",
+      "source_min": "20%",
+      "source_max": "-",
+      "figure": "8-2",
+      "signals": [
+        "CPA",
+        "CPB"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "CPA",
+          "CPB"
+        ],
+        "delay_ns": -12.5
+      }
+    },
+    {
+      "symbol": "tihcpstat",
+      "parameter": "CPA, CPB input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-2",
+      "signals": [
+        "CPA",
+        "CPB"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "CPA",
+          "CPB"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tovcpctl",
+      "parameter": "Rising CLK to coprocessor control valid",
+      "source_min": "-",
+      "source_max": "80%",
+      "figure": "8-2",
+      "signals": [
+        "CPnMREQ",
+        "CPSEQ",
+        "CPnOPC",
+        "CPnTRANS",
+        "CPTBIT"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "CPnMREQ",
+          "CPSEQ",
+          "CPnOPC",
+          "CPnTRANS",
+          "CPTBIT"
+        ],
+        "delay_ns": 12.5
+      }
+    },
+    {
+      "symbol": "tohcpctl",
+      "parameter": "Coprocessor control hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-2",
+      "signals": [
+        "CPnMREQ",
+        "CPSEQ",
+        "CPnOPC",
+        "CPnTRANS",
+        "CPTBIT"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "CPnMREQ",
+          "CPSEQ",
+          "CPnOPC",
+          "CPnTRANS",
+          "CPTBIT"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tovcpni",
+      "parameter": "Rising CLK to coprocessor CPnI valid",
+      "source_min": "-",
+      "source_max": "40%",
+      "figure": "8-2",
+      "signals": [
+        "CPnI"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "CPnI"
+        ],
+        "delay_ns": 37.5
+      }
+    },
+    {
+      "symbol": "tohcpni",
+      "parameter": "Coprocessor CPnI hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-2",
+      "signals": [
+        "CPnI"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "CPnI"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tisexc",
+      "parameter": "nFIQ, nIRQ, nRESET setup to rising CLK",
+      "source_min": "10%",
+      "source_max": "-",
+      "figure": "8-3",
+      "signals": [
+        "nFIQ",
+        "nIRQ",
+        "nRESET"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "nFIQ",
+          "nIRQ"
+        ],
+        "delay_ns": -6.25
+      },
+      "replaced_signals": [
+        {
+          "signal": "nRESET",
+          "owner": "architectural asynchronous-assert/synchronous-release reset contract",
+          "sdc_marker": "AC-OWN:reset"
+        }
+      ]
+    },
+    {
+      "symbol": "tihexc",
+      "parameter": "nFIQ, nIRQ, nRESET hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-3",
+      "signals": [
+        "nFIQ",
+        "nIRQ",
+        "nRESET"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "nFIQ",
+          "nIRQ"
+        ],
+        "delay_ns": 0.25
+      },
+      "replaced_signals": [
+        {
+          "signal": "nRESET",
+          "owner": "architectural asynchronous-assert/synchronous-release reset contract",
+          "sdc_marker": "AC-OWN:reset"
+        }
+      ]
+    },
+    {
+      "symbol": "tiscfg",
+      "parameter": "CFGBIGEND setup to rising CLK",
+      "source_min": "10%",
+      "source_max": "-",
+      "figure": "8-3",
+      "signals": [
+        "CFGBIGEND"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "CFGBIGEND"
+        ],
+        "delay_ns": -6.25
+      }
+    },
+    {
+      "symbol": "tihcfg",
+      "parameter": "CFGBIGEND hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-3",
+      "signals": [
+        "CFGBIGEND"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "CFGBIGEND"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tisdbgstat",
+      "parameter": "Debug status inputs setup to rising CLK",
+      "source_min": "10%",
+      "source_max": "-",
+      "figure": "8-4",
+      "signals": [
+        "DBGRQ",
+        "DBGBREAK",
+        "DBGEXT[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "DBGRQ",
+          "DBGBREAK",
+          "DBGEXT[*]"
+        ],
+        "delay_ns": -6.25
+      },
+      "figure_symbol": "tisdbgctl"
+    },
+    {
+      "symbol": "tihdbgstat",
+      "parameter": "Debug status inputs hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-4",
+      "signals": [
+        "DBGRQ",
+        "DBGBREAK",
+        "DBGEXT[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "DBGRQ",
+          "DBGBREAK",
+          "DBGEXT[*]"
+        ],
+        "delay_ns": 0.25
+      },
+      "figure_symbol": "tihdbgctl"
+    },
+    {
+      "symbol": "tovdbgctl",
+      "parameter": "Rising CLK to debug control valid",
+      "source_min": "-",
+      "source_max": "40%",
+      "figure": "8-4",
+      "signals": [
+        "DBGACK",
+        "DBGCOMMTX",
+        "DBGCOMMRX"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "DBGACK",
+          "DBGCOMMTX",
+          "DBGCOMMRX"
+        ],
+        "delay_ns": 37.5
+      },
+      "figure_symbol": "tovdbgstat"
+    },
+    {
+      "symbol": "tohdbctl",
+      "parameter": "Debug control hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-4",
+      "signals": [
+        "DBGACK",
+        "DBGCOMMTX",
+        "DBGCOMMRX"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "DBGACK",
+          "DBGCOMMTX",
+          "DBGCOMMRX"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      },
+      "figure_symbol": "tohdbgstat"
+    },
+    {
+      "symbol": "tistcken",
+      "parameter": "DBGTCKEN input setup to rising CLK",
+      "source_min": "40%",
+      "source_max": "-",
+      "figure": "8-5",
+      "signals": [
+        "DBGTCKEN"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "DBGTCKEN"
+        ],
+        "delay_ns": -25.0
+      }
+    },
+    {
+      "symbol": "tihtcken",
+      "parameter": "DBGTCKEN input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-5",
+      "signals": [
+        "DBGTCKEN"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "DBGTCKEN"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tistctl",
+      "parameter": "DBGTDI, DBGTMS input setup to rising CLK",
+      "source_min": "35%",
+      "source_max": "-",
+      "figure": "8-5",
+      "signals": [
+        "DBGTDI",
+        "DBGTMS"
+      ],
+      "target_sdc": {
+        "kind": "input-max",
+        "ports": [
+          "DBGTDI",
+          "DBGTMS"
+        ],
+        "delay_ns": -21.875
+      }
+    },
+    {
+      "symbol": "tihtctl",
+      "parameter": "DBGTDI, DBGTMS input hold from rising CLK",
+      "source_min": "-",
+      "source_max": "0%",
+      "figure": "8-5",
+      "signals": [
+        "DBGTDI",
+        "DBGTMS"
+      ],
+      "target_sdc": {
+        "kind": "input-min",
+        "ports": [
+          "DBGTDI",
+          "DBGTMS"
+        ],
+        "delay_ns": 0.25
+      }
+    },
+    {
+      "symbol": "tovtdo",
+      "parameter": "Rising CLK to DBGTDO valid",
+      "source_min": "-",
+      "source_max": "20%",
+      "figure": "8-5",
+      "signals": [
+        "DBGTDO"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "DBGTDO"
+        ],
+        "delay_ns": 50.0
+      }
+    },
+    {
+      "symbol": "tohtdo",
+      "parameter": "DBGTDO hold time from rising CLK",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-5",
+      "signals": [
+        "DBGTDO"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "DBGTDO"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      }
+    },
+    {
+      "symbol": "tovdbgstat",
+      "parameter": "Rising CLK to debug status valid",
+      "source_min": "-",
+      "source_max": "40%",
+      "figure": "8-4",
+      "signals": [
+        "DBGRNG[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-max",
+        "ports": [
+          "DBGRNG[*]"
+        ],
+        "delay_ns": 37.5
+      },
+      "figure_symbol": "tovdbgstat"
+    },
+    {
+      "symbol": "tohdbgstat",
+      "parameter": "Debug status hold time",
+      "source_min": ">0%",
+      "source_max": "-",
+      "figure": "8-4",
+      "signals": [
+        "DBGRNG[1:0]"
+      ],
+      "target_sdc": {
+        "kind": "output-min",
+        "ports": [
+          "DBGRNG[*]"
+        ],
+        "delay_ns": 0.0,
+        "requires_positive_routed_hold_slack": true
+      },
+      "figure_symbol": "tohdbgstat"
+    }
+  ],
+  "figure_groups": [
+    {
+      "figure": "8-1",
+      "title": "Timing parameters for data accesses",
+      "rows": [
+        "tisclken",
+        "tihclken",
+        "tisabort",
+        "tihabort",
+        "tisrdata",
+        "tihrdata",
+        "tovaddr",
+        "tohaddr",
+        "tovctl",
+        "tohctl",
+        "tovtrans",
+        "tohtrans",
+        "tovwdata",
+        "tohwdata"
+      ]
+    },
+    {
+      "figure": "8-2",
+      "title": "Coprocessor timing",
+      "rows": [
+        "tiscpstat",
+        "tihcpstat",
+        "tovcpctl",
+        "tohcpctl",
+        "tovcpni",
+        "tohcpni"
+      ]
+    },
+    {
+      "figure": "8-3",
+      "title": "Exception and configuration input timing",
+      "rows": [
+        "tisexc",
+        "tihexc",
+        "tiscfg",
+        "tihcfg"
+      ]
+    },
+    {
+      "figure": "8-4",
+      "title": "Debug timing",
+      "rows": [
+        "tisdbgstat",
+        "tihdbgstat",
+        "tovdbgctl",
+        "tohdbctl",
+        "tovdbgstat",
+        "tohdbgstat"
+      ]
+    },
+    {
+      "figure": "8-5",
+      "title": "Scan timing",
+      "rows": [
+        "tistcken",
+        "tihtcken",
+        "tistctl",
+        "tihtctl",
+        "tovtdo",
+        "tohtdo"
+      ]
+    }
+  ],
+  "integration_owned": {
+    "clock": [
+      "CLK"
+    ],
+    "reset": [
+      "nRESET",
+      "DBGnTRST"
+    ],
+    "debug-synchronization": [
+      "DBGRQ",
+      "DBGBREAK",
+      "DBGEXT[1:0]",
+      "DBGTCKEN",
+      "DBGTDI",
+      "DBGTMS"
+    ],
+    "atpg-test": [
+      "SCANENABLE",
+      "SCANIN",
+      "SCANOUT"
+    ],
+    "power": [
+      "VDD",
+      "VSS"
+    ]
+  },
+  "non_table_raw_ports": {
+    "static": [
+      "DBGEN"
+    ],
+    "outputs": [
+      "DBGnEXEC",
+      "DBGINSTRVALID",
+      "DBGnTDOEN",
+      "DMORE"
+    ],
+    "asynchronous": [
+      "DBGnTRST"
+    ]
+  }
+}

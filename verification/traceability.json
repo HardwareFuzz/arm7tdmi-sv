@@ -19,12 +19,12 @@
     "DFT": {
       "rtl": ["rtl/top/arm7tdmis_no_dft.sv"],
       "source_sections": ["FPGA profile exclusion policy in TASKS.md section 31.7"],
-      "tests": ["scripts/tests/test_fpga_package.py"]
+      "tests": ["verification/constrained_random_rs/src/fpga_package_contract.rs"]
     },
     "DOC": {
       "rtl": ["N/A - documentation and release-tooling requirement"],
       "source_sections": ["TASKS.md section 31.12"],
-      "tests": ["scripts/tests/test_documentation_contract.py", "scripts/tests/test_release_hygiene.py"]
+      "tests": ["verification/constrained_random_rs/src/documentation_contract.rs", "verification/constrained_random_rs/src/release_evidence/release_hygiene_contracts.rs"]
     },
     "ERR": {
       "rtl": ["rtl/core/", "rtl/debug/"],
@@ -69,18 +69,18 @@
     "VER": {
       "rtl": ["rtl/top/arm7tdmis_top.sv"],
       "source_sections": ["TASKS.md section 31.2 fail-hard evidence contract"],
-      "tests": ["scripts/tests/", "tb/harness/", "make -C scripts regress"]
+      "tests": ["verification/constrained_random_rs/src/", "tb/harness/", "make -C scripts regress"]
     }
   },
   "requirement_overrides": {
     "DOC-003": {
       "rtl": ["N/A - bidirectional traceability tooling"],
-      "tests": ["scripts/tests/test_traceability_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/traceability_report.rs"],
       "source_sections": ["TASKS.md section 31.12 DOC-003"]
     },
     "DOC-008": {
       "rtl": ["N/A - complete TRM inventory and release evidence contract"],
-      "tests": ["scripts/trm_coverage.py", "scripts/tests/test_trm_coverage_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/trm_coverage.rs"],
       "source_sections": ["ARM DDI 0234B complete 242-page inventory; TASKS.md section 31.12 DOC-008"]
     },
     "DBG-008": {
@@ -100,22 +100,22 @@
     },
     "FPGA-004": {
       "rtl": ["rtl/", "fpga/"],
-      "tests": ["scripts/independent_lint.py", "scripts/cdc_rdc_check.py", "scripts/tests/test_fpga_quality_contract.py", "tb/integration/arm7tdmis_mister_cdc_reset_tb.sv"],
+      "tests": ["verification/constrained_random_rs/src/independent_lint.rs", "verification/constrained_random_rs/src/cdc_rdc.rs", "verification/constrained_random_rs/src/fpga_contract.rs", "tb/integration/arm7tdmis_mister_cdc_reset_tb.sv"],
       "source_sections": ["TASKS.md section 31.11 FPGA-004"]
     },
     "FPGA-006": {
       "rtl": ["rtl/top/arm7tdmi_mister.sv", "rtl/core/", "fpga/"],
-      "tests": ["scripts/postfit_sim.py", "scripts/tests/test_postfit_sim_contract.py", "tb/postfit/arm7tdmi_postfit_tb.sv", "verification/intel_cyclonev_postfit_primitives.sv"],
+      "tests": ["verification/constrained_random_rs/src/postfit_sim.rs", "tb/postfit/arm7tdmi_postfit_tb.sv", "verification/intel_cyclonev_postfit_primitives.sv"],
       "source_sections": ["TASKS.md section 31.11 FPGA-006 fitted-netlist contract"]
     },
     "FPGA-009": {
       "rtl": ["fpga/arm7tdmis_conformance.sdc"],
-      "tests": ["scripts/ac_timing.py", "scripts/tests/test_ac_timing_contract.py", "verification/ac_timing.json", "docs/AC_TIMING.md"],
+      "tests": ["verification/constrained_random_rs/src/ac_timing.rs", "verification/constrained_random_rs/src/ac_timing_reference.json", "verification/ac_timing.json", "docs/AC_TIMING.md"],
       "source_sections": ["ARM DDI 0234B Chapter 8, Table 8-1, Figures 8-1 through 8-5, and Appendix B.3"]
     },
     "MIST-007": {
       "rtl": ["rtl/top/arm7tdmi_mister.sv", "examples/mister_framework/arm7tdmi_mister_emu.sv"],
-      "tests": ["scripts/mister_framework_build.py", "scripts/tests/test_mister_framework_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/mister_framework.rs", "verification/constrained_random_rs/src/mister_framework_reports.rs"],
       "source_sections": ["TASKS.md section 31.9 MIST-007"]
     },
     "MIST-008": {
@@ -130,57 +130,60 @@
     },
     "MIST-010": {
       "rtl": ["examples/generic_soc/arm7tdmi_generic_soc.sv", "examples/mister_framework/arm7tdmi_mister_emu.sv"],
-      "tests": ["examples/generic_soc/arm7tdmi_generic_soc_tb.sv", "scripts/check_generic_soc_rom.py", "scripts/tests/test_generic_soc_contract.py"],
+      "tests": ["examples/generic_soc/arm7tdmi_generic_soc_tb.sv", "verification/constrained_random_rs/src/generic_soc_rom.rs", "verification/constrained_random_rs/src/integration_contracts.rs"],
       "source_sections": ["TASKS.md section 31.9 MIST-010"]
+    },
+    "VER-009": {
+      "tests": ["tb/integration/arm7tdmis_standalone_tb.sv", "verification/constrained_random_rs/src/standalone_contract.rs"]
     },
     "VAL-001": {
       "rtl": ["rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/qemu_armv4t_reference.py", "tb/integration/arm7tdmis_qemu_diff_tb.sv"],
+      "tests": ["verification/constrained_random_rs/src/reference.rs", "verification/constrained_random_rs/src/qemu.rs", "verification/constrained_random_rs/src/verification_contracts.rs", "tb/integration/arm7tdmis_qemu_diff_tb.sv"],
       "source_sections": ["TASKS.md section 31.10 VAL-001 shared-subset policy"]
     },
     "VAL-002": {
       "rtl": ["rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/constrained_random.py", "tb/integration/arm7tdmis_random_diff_tb.sv", "tb/integration/arm7tdmis_random_policy_tb.sv", "scripts/tests/test_constrained_random_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/campaign.rs", "verification/constrained_random_rs/src/generation.rs", "verification/constrained_random_rs/src/qemu.rs", "verification/constrained_random_rs/src/verification_contracts.rs", "tb/integration/arm7tdmis_random_diff_tb.sv", "tb/integration/arm7tdmis_random_policy_tb.sv"],
       "source_sections": ["TASKS.md section 31.10 VAL-002 constrained-random campaign"]
     },
     "VAL-003": {
       "rtl": ["rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/public_suite.py", "verification/public_suites.json", "tb/integration/arm7tdmis_public_suite_tb.sv", "scripts/tests/test_public_suite_contract.py", "scripts/tests/test_public_suite_evidence.py"],
+      "tests": ["verification/constrained_random_rs/src/public_suite.rs", "verification/constrained_random_rs/src/release_evidence/validation_contracts.rs", "verification/constrained_random_rs/src/verification_contracts.rs", "verification/public_suites.json", "tb/integration/arm7tdmis_public_suite_tb.sv"],
       "source_sections": ["TASKS.md section 31.10 VAL-003 pinned public-suite contract"]
     },
     "VAL-004": {
       "rtl": ["rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/table7_cross.py", "verification/table7_cross.json", "tb/integration/arm7tdmis_table7_core_phase_matrix_tb.sv", "scripts/tests/test_table7_cross_contract.py", "scripts/tests/test_table7_cross_evidence.py"],
+      "tests": ["verification/constrained_random_rs/src/table7.rs", "verification/constrained_random_rs/src/table7_cross_contract.rs", "verification/constrained_random_rs/src/release_evidence/validation_contracts.rs", "verification/table7_cross.json", "tb/integration/arm7tdmis_table7_core_phase_matrix_tb.sv"],
       "source_sections": ["ARM DDI 0234B Chapter 7 and TASKS.md section 31.10 VAL-004"]
     },
     "VAL-005": {
       "rtl": ["rtl/core/", "rtl/debug/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/random_events.py", "tb/integration/arm7tdmis_random_event_matrix_tb.sv", "scripts/tests/test_random_event_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/random_events.rs", "verification/constrained_random_rs/src/release_evidence/validation_contracts.rs", "tb/integration/arm7tdmis_random_event_matrix_tb.sv"],
       "source_sections": ["ARM DDI 0234B external event sampling and TASKS.md section 31.10 VAL-005"]
     },
     "VAL-006": {
       "rtl": ["rtl/decode/", "rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/functional_coverage.py", "verification/functional_coverage.json", "tb/unit/reserved_decode_tb.sv", "tb/unit/unpredictable_decode_tb.sv", "scripts/tests/test_functional_coverage_contract.py"],
+      "tests": ["verification/constrained_random_rs/src/functional_coverage.rs", "verification/constrained_random_rs/src/release_evidence/closure_contracts.rs", "verification/functional_coverage.json", "tb/unit/reserved_decode_tb.sv", "tb/unit/unpredictable_decode_tb.sv"],
       "source_sections": ["ARM DDI 0100I ARMv4T encoding maps and TASKS.md section 31.10 VAL-006"]
     },
     "VAL-007": {
       "rtl": ["rtl/core/", "rtl/datapath/", "rtl/jtag/", "rtl/top/arm7tdmi_mister.sv"],
-      "tests": ["tb/formal/formal.sby", "tb/formal/arm7tdmis_*_formal.sv", "scripts/formal_report.py", "scripts/tests/test_formal_contract.py"],
+      "tests": ["tb/formal/formal.sby", "tb/formal/arm7tdmis_*_formal.sv", "verification/constrained_random_rs/src/oss_cad_suite.rs", "verification/constrained_random_rs/src/formal_report.rs", "verification/constrained_random_rs/src/release_evidence/closure_contracts.rs"],
       "source_sections": ["ARM DDI 0234B architectural and interface invariants; TASKS.md section 31.10 VAL-007"]
     },
     "VAL-008": {
       "rtl": ["rtl/core/arm7tdmis_core_pipelined.sv", "rtl/debug/arm7tdmis_ice_rt.sv"],
-      "tests": ["tb/formal/arm7tdmis_core_formal.sv", "tb/formal/arm7tdmis_debug_cover_formal.sv", "scripts/formal_report.py"],
+      "tests": ["tb/formal/arm7tdmis_core_formal.sv", "tb/formal/arm7tdmis_debug_cover_formal.sv", "verification/constrained_random_rs/src/oss_cad_suite.rs", "verification/constrained_random_rs/src/formal_report.rs"],
       "source_sections": ["TASKS.md section 31.10 VAL-008 bounded reachability closure"]
     },
     "VAL-009": {
       "rtl": ["rtl/core/", "rtl/top/arm7tdmis_top.sv"],
-      "tests": ["verification/compiler/", "tb/integration/arm7tdmis_compiler_tb.sv"],
+      "tests": ["verification/compiler/", "verification/constrained_random_rs/src/arm_toolchain.rs", "verification/constrained_random_rs/src/compiler_program.rs", "verification/constrained_random_rs/src/integration_contracts.rs", "tb/integration/arm7tdmis_compiler_tb.sv"],
       "source_sections": ["TASKS.md section 31.10 VAL-009 compiler-program contract"]
     },
     "VAL-010": {
       "rtl": ["rtl/top/arm7tdmi_mister.sv"],
-      "tests": ["scripts/soak_harness.py", "scripts/tests/test_soak_contract.py", "tb/integration/arm7tdmis_mister_wrapper_tb.sv"],
+      "tests": ["verification/constrained_random_rs/src/soak.rs", "verification/constrained_random_rs/src/release_evidence/validation_contracts.rs", "tb/integration/arm7tdmis_mister_wrapper_tb.sv"],
       "source_sections": ["TASKS.md section 31.10 VAL-010 sanitizer-soak contract"]
     },
     "VAL-011": {
@@ -207,43 +210,70 @@
     {"glob": "tb/programs/*", "requirements": ["VER-003", "ISA-017"]},
     {"glob": "tb/formal/*", "requirements": ["VAL-007", "VAL-008"]},
     {"glob": "verification/*.sv", "requirements": ["VER-004", "BUS-012"]},
-    {"glob": "verification/*.py", "requirements": ["VAL-001"]},
     {"glob": "verification/programs/*", "requirements": ["VAL-001"]},
-    {"glob": "verification/constrained_random.py", "requirements": ["VAL-002"]},
+    {"glob": "verification/constrained_random_rs/Cargo.toml", "requirements": ["VAL-001", "VAL-002"]},
+    {"glob": "verification/constrained_random_rs/Cargo.lock", "requirements": ["VAL-001", "VAL-002"]},
+    {"glob": "verification/constrained_random_rs/src/main.rs", "requirements": ["VAL-001", "VAL-002"]},
+    {"glob": "verification/constrained_random_rs/src/documentation_contract.rs", "requirements": ["DOC-001", "DOC-002", "DOC-007"]},
+    {"glob": "verification/constrained_random_rs/src/debug_bridge_contract.rs", "requirements": ["JTAG-006"]},
+    {"glob": "verification/constrained_random_rs/src/characterization_contract.rs", "requirements": ["FPGA-005"]},
+    {"glob": "verification/constrained_random_rs/src/fpga_contract.rs", "requirements": ["FPGA-001", "FPGA-002", "FPGA-004"]},
+    {"glob": "verification/constrained_random_rs/src/fpga_package_contract.rs", "requirements": ["DFT-001", "MIST-005", "MIST-013"]},
+    {"glob": "verification/constrained_random_rs/src/hdl_source_contract.rs", "requirements": ["VER-002", "VER-006"]},
+    {"glob": "verification/constrained_random_rs/src/integration_contracts.rs", "requirements": ["VAL-009", "MIST-010"]},
+    {"glob": "verification/constrained_random_rs/src/verification_contracts.rs", "requirements": ["VAL-001", "VAL-002", "VAL-003"]},
+    {"glob": "verification/constrained_random_rs/src/qemu.rs", "requirements": ["VAL-001", "VAL-002"]},
+    {"glob": "verification/constrained_random_rs/src/reference.rs", "requirements": ["VAL-001"]},
+    {"glob": "verification/constrained_random_rs/src/campaign.rs", "requirements": ["VAL-002"]},
+    {"glob": "verification/constrained_random_rs/src/generation.rs", "requirements": ["VAL-002"]},
+    {"glob": "verification/constrained_random_rs/src/random.rs", "requirements": ["VAL-002"]},
     {"glob": "tb/integration/arm7tdmis_random_*_tb.sv", "requirements": ["VAL-002"]},
-    {"glob": "verification/public_suite.py", "requirements": ["VAL-003"]},
+    {"glob": "verification/constrained_random_rs/src/public_suite.rs", "requirements": ["VAL-003"]},
     {"glob": "tb/integration/arm7tdmis_public_suite_tb.sv", "requirements": ["VAL-003"]},
-    {"glob": "verification/table7_cross.py", "requirements": ["VAL-004"]},
-    {"glob": "scripts/mister_framework_build.py", "requirements": ["MIST-007", "FPGA-002"]},
-    {"glob": "scripts/tests/test_mister_framework_contract.py", "requirements": ["MIST-007", "FPGA-002"]},
+    {"glob": "verification/constrained_random_rs/src/table7.rs", "requirements": ["VAL-004"]},
+    {"glob": "verification/constrained_random_rs/src/table7_contract.rs", "requirements": ["BUS-002", "BUS-003"]},
+    {"glob": "verification/constrained_random_rs/src/table7_cross_contract.rs", "requirements": ["VAL-004"]},
+    {"glob": "verification/constrained_random_rs/src/savestate_contract.rs", "requirements": ["MIST-006"]},
+    {"glob": "verification/constrained_random_rs/src/mister_framework.rs", "requirements": ["MIST-007", "FPGA-002"]},
+    {"glob": "verification/constrained_random_rs/src/mister_framework_reports.rs", "requirements": ["MIST-007", "FPGA-002"]},
     {"glob": "examples/mister_framework/*", "requirements": ["MIST-007", "FPGA-002"]},
     {"glob": "examples/mister_framework/arm7tdmi_mister_emu.sv", "requirements": ["MIST-010"]},
     {"glob": "examples/generic_soc/*", "requirements": ["MIST-010"]},
-    {"glob": "scripts/check_generic_soc_rom.py", "requirements": ["MIST-010"]},
-    {"glob": "scripts/tests/test_generic_soc_contract.py", "requirements": ["MIST-010"]},
+    {"glob": "verification/constrained_random_rs/src/generic_soc_rom.rs", "requirements": ["MIST-010"]},
     {"glob": "tb/integration/arm7tdmis_table7_core_phase_matrix_tb.sv", "requirements": ["VAL-004", "BUS-002", "BUS-003"]},
-    {"glob": "scripts/tests/test_table7_cross_*.py", "requirements": ["VAL-004"]},
-    {"glob": "verification/random_events.py", "requirements": ["VAL-005"]},
+    {"glob": "verification/constrained_random_rs/src/random_events.rs", "requirements": ["VAL-005"]},
+    {"glob": "verification/constrained_random_rs/src/soak.rs", "requirements": ["VAL-010"]},
+    {"glob": "verification/constrained_random_rs/src/coverage_report.rs", "requirements": ["VER-008"]},
+    {"glob": "verification/constrained_random_rs/src/regression.rs", "requirements": ["VER-003", "VER-008"]},
+    {"glob": "verification/constrained_random_rs/src/mutation_harness.rs", "requirements": ["VER-005"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence.rs", "requirements": ["VER-008", "DOC-006"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence/*.rs", "requirements": ["VER-008", "DOC-006"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence/files/*.rs", "requirements": ["VER-008", "DOC-006"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence/validation_contracts.rs", "requirements": ["VAL-003", "VAL-004", "VAL-005", "VAL-010"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence/closure_contracts.rs", "requirements": ["VAL-006", "VAL-007", "VAL-008"]},
+    {"glob": "verification/constrained_random_rs/src/release_evidence/release_hygiene_contracts.rs", "requirements": ["DOC-004", "DOC-005", "DOC-006"]},
+    {"glob": "verification/constrained_random_rs/src/quartus_reports.rs", "requirements": ["FPGA-003", "FPGA-005"]},
+    {"glob": "verification/constrained_random_rs/src/standalone_contract.rs", "requirements": ["VER-009"]},
+    {"glob": "verification/constrained_random_rs/src/traceability_report.rs", "requirements": ["DOC-003"]},
     {"glob": "tb/integration/arm7tdmis_random_event_matrix_tb.sv", "requirements": ["VAL-005"]},
     {"glob": "tb/integration/arm7tdmis_debug_system_speed_abort_tb.sv", "requirements": ["DBG-008"]},
     {"glob": "tb/integration/arm7tdmis_debug_status_tb.sv", "requirements": ["DBG-002", "DBG-009"]},
-    {"glob": "scripts/tests/test_random_event_contract.py", "requirements": ["VAL-005"]},
-    {"glob": "verification/functional_coverage.py", "requirements": ["VAL-006"]},
+    {"glob": "verification/constrained_random_rs/src/functional_coverage.rs", "requirements": ["VAL-006"]},
     {"glob": "verification/functional_coverage.json", "requirements": ["VAL-006"]},
-    {"glob": "scripts/tests/test_functional_coverage_contract.py", "requirements": ["VAL-006"]},
     {"glob": "verification/compiler/*", "requirements": ["VAL-009"]},
+    {"glob": "verification/constrained_random_rs/src/arm_toolchain.rs", "requirements": ["VAL-009"]},
+    {"glob": "verification/constrained_random_rs/src/pinned_archive.rs", "requirements": ["VAL-007", "VAL-008", "VAL-009"]},
+    {"glob": "verification/constrained_random_rs/src/compiler_program.rs", "requirements": ["VAL-009"]},
+    {"glob": "verification/constrained_random_rs/src/oss_cad_suite.rs", "requirements": ["VAL-007", "VAL-008"]},
+    {"glob": "verification/constrained_random_rs/src/formal_report.rs", "requirements": ["VAL-007", "VAL-008"]},
+    {"glob": "verification/constrained_random_rs/src/independent_lint.rs", "requirements": ["FPGA-004"]},
+    {"glob": "verification/constrained_random_rs/src/cdc_rdc.rs", "requirements": ["FPGA-004"]},
     {"glob": "verification/intel_cyclonev_postfit_primitives.sv", "requirements": ["FPGA-006"]},
     {"glob": "tb/postfit/*.sv", "requirements": ["FPGA-006"]},
-    {"glob": "scripts/postfit_sim.py", "requirements": ["FPGA-006"]},
-    {"glob": "scripts/tests/test_*.py", "requirements": ["VER-002", "VER-005"]},
-    {"glob": "scripts/tests/test_fpga_quality_contract.py", "requirements": ["FPGA-004"]},
-    {"glob": "scripts/tests/test_postfit_sim_contract.py", "requirements": ["FPGA-006"]},
-    {"glob": "scripts/tests/test_trm_coverage_contract.py", "requirements": ["DOC-008"]},
-    {"glob": "scripts/ac_timing.py", "requirements": ["FPGA-009"]},
-    {"glob": "scripts/tests/test_ac_timing_contract.py", "requirements": ["FPGA-009"]},
-    {"glob": "verification/ac_timing.json", "requirements": ["FPGA-009"]},
-    {"glob": "scripts/tests/test_constrained_random_contract.py", "requirements": ["VAL-002"]},
-    {"glob": "scripts/tests/test_public_suite_*.py", "requirements": ["VAL-003"]},
-    {"glob": "scripts/tests/test_soak_contract.py", "requirements": ["VAL-010"]}
+    {"glob": "verification/constrained_random_rs/src/postfit_sim.rs", "requirements": ["FPGA-006"]},
+    {"glob": "verification/constrained_random_rs/src/trm_coverage.rs", "requirements": ["DOC-008"]},
+    {"glob": "verification/constrained_random_rs/src/ac_timing.rs", "requirements": ["FPGA-009"]},
+    {"glob": "verification/constrained_random_rs/src/ac_timing_reference.json", "requirements": ["FPGA-009"]},
+    {"glob": "verification/ac_timing.json", "requirements": ["FPGA-009"]}
   ]
 }

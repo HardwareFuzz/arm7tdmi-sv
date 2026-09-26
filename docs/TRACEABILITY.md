@@ -15,12 +15,13 @@ requirements. Each row contains:
 |---|---|
 | Requirement → evidence | canonical TASKS section and external source family, RTL/FPGA implementation paths, directed/random/formal test paths or targets, a stable requirement acceptance-bin name, expected regression phases, ledger status, and latest local result |
 | RTL → requirement | every tracked `rtl/*.sv` or `rtl/**/*.sv` file and one or more owning §31 IDs |
-| Verification → requirement | every tracked SystemVerilog test/program, formal source, QEMU/compiler source, reference generator, and Python contract test and one or more owning §31 IDs |
+| Verification → requirement | every tracked SystemVerilog test/program, formal source, QEMU/compiler source, and Rust verification source maps to one or more owning §31 IDs |
 
 The committed `verification/traceability.json` is the reviewed ownership map.
 It contains prefix defaults, narrow exceptions for special/open requirements,
-and reverse file rules. `scripts/traceability_report.py` combines that map
-with the canonical checkboxes and evidence citations in `TASKS.md`; the task
+and reverse file rules. The Rust
+`verification/constrained_random_rs/src/traceability_report.rs` combines that
+map with the canonical checkboxes and evidence citations in `TASKS.md`; the task
 ledger is not duplicated in the mapping.
 
 ## Acceptance and failure behavior

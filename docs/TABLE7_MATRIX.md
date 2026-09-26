@@ -55,9 +55,9 @@ and instruction/exception class × interrupt timing. “Legal-equivalence” is
 important: `m` does not apply to loads, for example, and the manifest records
 `not-applicable` instead of inventing an illegal Cartesian row.
 
-The full regression runs every owning test first and then invokes
-`verification/table7_cross.py`. The gate accepts a row set only when its named
-phase passed, the regression's recorded log SHA-256 still matches the file,
+The full regression runs every owning test first and then invokes the Rust
+`arm7-constrained-random table7-cross` command. The gate accepts a row set only
+when its named phase passed, the regression's recorded log SHA-256 matches the file,
 the exact count-bearing PASS expression occurs in that log, and the owning
 testbench SHA-256 is recorded. The resulting
 `reports/generated/table7-cross-report.json` has schema

@@ -66,7 +66,7 @@ regressions.
 
 [`linker.ld`](../examples/generic_soc/linker.ld) locates the program at the
 ARM reset vector and rejects an image larger than the 1 KiB ROM.
-`check_generic_soc_rom.py` compiles it with the checksum-installed Arm GNU
+The Rust `generic-soc-rom-check` command compiles it with the checksum-installed Arm GNU
 14.3.Rel1 toolchain using `-march=armv4t`, checks ARMv4T/Thumb-1 ELF
 attributes and required symbols/instructions, and compares every little-endian
 word against the synthesizable `rom_word` function. It also checks all unused
@@ -113,6 +113,10 @@ From a clean committed tree, build the official-template core:
 ```sh
 make -C scripts mister-framework
 ```
+
+The Rust `mister-framework` command checks the pinned framework commit and
+tree, installs the local RTL overlay, runs Quartus, and validates the fit,
+timing, warnings, and artifact hashes before publishing its report.
 
 The loadable image is
 `reports/generated/mister-framework/Template.rbf`. The MiSTer display is blue

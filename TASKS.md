@@ -2390,7 +2390,8 @@ No functional claim can become VERIFIED until every item here is complete.
   integration, and smoke execution.
 - [x] **VER-004:** Make stale cached binaries impossible to mistake for a new result;
   record the RTL git hash, tool versions, build variant, seed, and test manifest in the
-  regression output. `scripts/regression_harness.py` starts every full/quick run
+  regression output. The Rust `verification/constrained_random_rs/src/regression.rs`
+  runner starts every full/quick run
   with `clean`, records the Git commit and dirty-source SHA-256, tool/platform
   versions, variant, seed, and complete manifest, then hashes every phase log in
   the atomic `arm7tdmis-regression-v1` JSON result.
@@ -2398,7 +2399,7 @@ No functional claim can become VERIFIED until every item here is complete.
   result and proves the overall command fails. Add periodic mutation testing for major
   writeback, flag, exception, and bus controls. The local regression and CI run
   `tb/harness/expected_failure_tb.sv` and pass only when its real simulator
-  `$fatal` propagates nonzero. `scripts/mutation_harness.py` also requires four
+  `$fatal` propagates nonzero. The Rust `mutation-self-test` command also requires four
   opt-in RTL mutants to fail through their intended architectural diagnostics;
   a surviving mutant, compile failure, or unrelated test failure fails the
   mutation command. GitHub Actions runs this suite weekly and on manual dispatch.
@@ -2407,7 +2408,7 @@ No functional claim can become VERIFIED until every item here is complete.
   Every compile uses fatal `-Wall`, every simulation enables `--assert`, and
   no RTL/test source uses `$error`. The stale blanket `UNOPTFLAT` waiver was
   removed. `docs/WARNING_POLICY.md` owns the two command-line and three inline
-  classes with rationale and expiry conditions; `test_warning_policy.py`
+  classes with rationale and expiry conditions; `verification/constrained_random_rs/src/hdl_source_contract.rs`
   mechanically rejects new classes, unpaired pragmas, or weakened fatal flags.
 - [x] **VER-007:** Stop treating `ABORT` during I/C as illegal testbench stimulus.
   Assert that the core ignores it there, as the TRM requires.
@@ -2798,9 +2799,9 @@ number of cycles spent in an internal FSM state.
   condition fail, exceptions, all multiply m values, and coprocessor busy cases.
   `docs/TABLE7_MATRIX.md` records the direct DDI 0234B derivation, Table 7-2
   counts, all 21 detailed rows, state-machine path, and registered fail-hard
-  benches. `test_table7_contract.py` rejects a missing/duplicate table, an
-  unregistered citation, an incomplete central signal oracle, or reopened task
-  evidence.
+  benches. `verification/constrained_random_rs/src/table7_contract.rs` rejects
+  a missing/duplicate table, an unregistered citation, an incomplete central
+  signal oracle, or reopened task evidence.
 - [x] **BUS-004:** Reconcile Table 7-2's STM `+I` with Table 7-14's visible bus rows in
   a checked design note; do the same for every apparent summary/detail discrepancy.
   `docs/RAW_BUS.md` gives detailed pin rows precedence over summary occupancy tokens
@@ -3153,8 +3154,9 @@ number of cycles spent in an internal FSM state.
   count, reset/disable isolation, and a complete IDCODE scan through the real
   TAP. The full register/PSR/memory/DCC/breakpoint/watchpoint/monitor scan
   semantics behind that transport remain the checked JTAG-005 integration
-  matrix. `test_debug_bridge_contract.py` locks the selected alternative and
-  prevents it from being mislabeled as asynchronous JTAG interoperability.
+  matrix. `verification/constrained_random_rs/src/debug_bridge_contract.rs`
+  locks the selected alternative and prevents it from being mislabeled as
+  asynchronous JTAG interoperability.
 - [x] **ETM-001:** Define and verify `DBGINSTRVALID` and `DBGnEXEC` for commit,
   condition failure, stalls, multicycle instructions, flushes, exceptions, debug, and
   Thumb. Expose the documented bus/pipeline information required by ETM7.
@@ -3258,9 +3260,10 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   or hand-edited generated files.
   `fpga/arm7tdmi_mister.{f,qip,qsf,sdc}` and
   `fpga/example/arm7tdmi_mister_example_top.sv` form the portable package.
-  `scripts/tests/test_fpga_package.py` proves exact source-manifest parity,
-  repository-relative paths, public-fragment references, and absence of
-  hierarchy-dependent integration; `make -C scripts lint-example` elaborates
+  `verification/constrained_random_rs/src/fpga_package_contract.rs` proves
+  exact source-manifest parity, repository-relative paths, public-fragment
+  references, and absence of hierarchy-dependent integration;
+  `make -C scripts lint-example` elaborates
   the complete package as the selected Cyclone V example top, and
   `make -C scripts quartus-analysis` reads the QSF/QIP and successfully
   analyzes/elaborates it with Quartus 17.0.2 for `5CSEBA6U23I7`. All three
@@ -3307,7 +3310,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   source hash, upstream identity, tool, command, timing/resources, reviewed
   upstream constraint diagnostics, and hashes the build log, map/fit/STA/
   assembly reports, summaries, and RBF. Full regression requires this phase;
-  `scripts/release_evidence.py` revalidates every field and file hash and
+  the Rust `release-evidence` command revalidates every field and file hash and
   includes them in the commit-addressed evidence archive.
 - [ ] **MIST-008:** Create a PocketStation reference system using legally supplied/
   user-provided BIOS and software images. Implement or stub the documented SRAM, flash,
@@ -3327,7 +3330,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   entry/return. It publishes `RUN!` progress and permanent `PASS`/`FAIL`
   status/signature registers, emits `GIP` or `F` through a backpressured UART,
   and is observed under randomized CPU enables in
-  `arm7tdmi_generic_soc_tb.sv`. `scripts/check_generic_soc_rom.py` uses the
+  `arm7tdmi_generic_soc_tb.sv`. The Rust `generic-soc-rom-check` command uses the
   checksum-installed Arm GNU 14.3.Rel1 toolchain to prove every assembled
   byte equals the synthesizable ROM (203 words, SHA-256
   `ee9c06bc1720ce9e4f9f57da3e162acdfc0e42df403766f6d98bbeb9249c4900`);
@@ -3336,7 +3339,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   blue/running, green/pass, or red/fail video plus a 32-bit signature barcode
   and LED states without hierarchy or JTAG. `docs/GENERIC_SOC.md` freezes the
   memory map, software groups, result protocol, tool versions, commands, and
-  board interpretation, while `scripts/tests/test_generic_soc_contract.py`
+  board interpretation, while `verification/constrained_random_rs/src/integration_contracts.rs`
   enforces the complete contract. Physical execution evidence remains
   FPGA-007.
 - [x] **MIST-011:** Publish maximum CPU rate, master-clock/CE ratios, latency rules,
@@ -3346,9 +3349,9 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   power, reset, and endian property from checked reports. Four like-for-like
   `arm7tdmi_mister` fits isolate `none`, `debug`, `coprocessor`, and `both`
   settings on the same device and constraints.
-  `scripts/quartus_option_characterization.py` validates the reports and emits
+  The Rust `quartus-option-characterization` command validates the reports and emits
   `reports/generated/quartus-options.json`; the mandatory regression phase and
-  `scripts/tests/test_option_characterization.py` freeze the configurations,
+  `verification/constrained_random_rs/src/quartus_reports.rs` tests freeze the configurations,
   delta schema, timing-closing Auto Fit policy, documentation, and evidence
   path. The policy preserves the 0.25 ns minimum synchronous-input contract
   across all four option profiles instead of accepting a one-shot placement
@@ -3374,7 +3377,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   Both are stateless, hierarchy-free public-package sources.
   `adapters_tb` verifies idle qualification, multi-cycle backpressure, exact
   payload/metadata, success, read data, and error mapping for both adapters;
-  `test_fpga_package.py` enforces file-list/QIP inclusion and independence
+  `fpga_package_contract.rs` enforces file-list/QIP inclusion and independence
   from the canonical wrapper implementation.
 
 ## 31.10 P0/P1 — verification closure
@@ -3382,7 +3385,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
 - [x] **VAL-001:** Add an independent ARMv4T instruction reference model or
   differential co-simulation. It must not reuse this RTL's decoder or expected-value
   functions. Normalize documented implementation-defined/UNPREDICTABLE cases.
-  `verification/qemu_armv4t_reference.py` compiles one repository-authored
+  `verification/constrained_random_rs` compiles one repository-authored
   ARM/Thumb program for `-march=armv4t`, runs it independently on QEMU's
   ARM926 model with one guest instruction per translation block, and converts
   the external CPU log into post-instruction state without importing RTL,
@@ -3399,7 +3402,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
 - [x] **VAL-002:** Generate constrained-random ARM and Thumb programs with instruction,
   register, flag, mode, memory, exception, alignment, endian, and dependency coverage.
   Compare retirement state and permitted memory effects for long seeded runs.
-  `verification/constrained_random.py` deterministically generates 32 independent
+  `verification/constrained_random_rs` deterministically generates 32 independent
   256-instruction seeds for the release campaign. Each seed's shared-ARMv4T
   lane boots at address zero on QEMU ARM926 and the RTL, walks all privileged
   register-bank modes, takes ARM and Thumb SVC/undefined exceptions, and
@@ -3422,7 +3425,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   ARM/Thumb instruction exercisers used by mature open FPGA cores) after recording
   license, source commit, expected signature, and any patches. Do not claim the
   proprietary Arm Validation Suite was run unless it actually was.
-  `verification/public_suite.py` fetches the MIT-licensed
+  `verification/constrained_random_rs/src/public_suite.rs` fetches the MIT-licensed
   `jsmolka/gba-suite` repository at exact commit
   `a7113b67e63f83a9b321696ddd7042ccfad6c881`, verifies its Git tree,
   origin, clean state, license, and source-ROM hashes against
@@ -3453,16 +3456,17 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   `verification/table7_cross.json` then binds nine required legal-equivalence
   crosses to the existing register/PC, all-`m`, block-`n`, coprocessor-`b/n`,
   condition/mode, endian/alignment, abort, interrupt, and exception matrices.
-  `verification/table7_cross.py` accepts them only from passing phases in the
+  `verification/constrained_random_rs/src/table7.rs` accepts them only from passing phases in the
   same clean full regression, verifies every phase log and testbench SHA-256,
   requires the exact row-count PASS marker, and writes
   `table7-cross-report.json`. The checked manifest accounts for 1,903 evidence
   rows against a 1,891-row minimum with all nine crosses covered and no missing
   required bin; non-applicable dimension combinations are explicit rather
-  than counted as waivers. `scripts/tests/test_table7_cross_contract.py` and
-  `scripts/tests/test_table7_cross_evidence.py` prevent the phase, manifest,
-  hashes, dimensions, row minima, release validation, or checked status from
-  weakening.
+  than counted as waivers.
+  `verification/constrained_random_rs/src/table7_cross_contract.rs` and
+  `verification/constrained_random_rs/src/release_evidence/validation_contracts.rs`
+  prevent the phase, manifest, hashes, dimensions, row minima, release
+  validation, or checked status from weakening.
 - [x] **VAL-005:** Add randomized CLKEN stalls to every instruction class and random
   legal ABORT, IRQ, FIQ, reset, DBGRQ, and coprocessor handshakes at each cycle.
   `arm7tdmis_random_event_matrix_tb.sv` closes all 16 normalized decoder-class
@@ -3473,7 +3477,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   only accompany an active response, `{CPA,CPB}` can only be `00`, `01`, or
   `11`, and each event must produce the expected abort/interrupt/debug/reset/
   coprocessor outcome.
-  `verification/random_events.py` runs 32 deterministic nonrepeating seeds,
+  `verification/constrained_random_rs/src/random_events.rs` runs 32 deterministic nonrepeating seeds,
   requires all 16 class and ten event bins plus at least 256 random decisions
   in every seed, preserves exact logs and reproducers, and emits
   `arm7tdmis-random-events-v1`. Full regression and release evidence require
@@ -3487,7 +3491,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   bins across every ARM class/condition/data-processing opcode/shifter/
   multiply/PSR/branch/memory/block/swap/coprocessor family, all 19 Thumb
   formats and their operation subfamilies, and the reserved plus selected
-  UNPREDICTABLE-policy paths. `functional_coverage.py` independently
+  UNPREDICTABLE-policy paths. `functional_coverage.rs` independently
   enumerates all 4,096 ARM decode rows, all 4,096 `cond=1111` policy rows,
   and all 65,536 Thumb halfwords. The already exhaustive
   `reserved_decode_tb.sv` and `unpredictable_decode_tb.sv` prove the RTL
@@ -3519,8 +3523,8 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   exposed and closed CLKEN-dependent coprocessor/Undefined behavior,
   exception-priority masking, and MiSTer write-data ownership under target
   backpressure.
-  `install_oss_cad_suite.py` checksum-installs OSS CAD Suite 2026-07-29;
-  `formal_report.py` rejects a task without `PASS`, records every source/log
+  The Rust `oss-cad-suite-install` command checksum-installs OSS CAD Suite 2026-07-29;
+  The Rust `formal-report` command rejects a task without `PASS`, records every source/log
   hash, and emits schema `arm7tdmis-formal-v1`. Formal is mandatory in the
   non-quick regression, scheduled/manual CI, traceability, and release
   evidence; release validation independently rejects dirty, stale, weakened,
@@ -3538,9 +3542,9 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   traces and an empty uncovered list.
 - [x] **VAL-009:** Add software-level compiler tests built with pinned
   `arm-none-eabi` tools for `-march=armv4t`, in ARM, Thumb, and interworked code.
-  `install_arm_toolchain.py` downloads Arm GNU Toolchain 14.3.Rel1 from Arm's
+  The Rust `arm-toolchain-install` command downloads Arm GNU Toolchain 14.3.Rel1 from Arm's
   release endpoint, accepts it only at the recorded SHA-256, and caches a
-  versioned install with provenance metadata. `build_compiler_program.py`
+  versioned install with provenance metadata. The Rust `compiler-program-build` command
   compiles separate `-marm` and `-mthumb` C translation units plus ARM startup
   code with `-mthumb-interwork`, rejects emitted `BLX`, requires ELF
   `Tag_CPU_arch: v4T`, and records commands, tool identity, and source/output
@@ -3553,7 +3557,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
 - [x] **VAL-010:** Run long deterministic fuzz/soak jobs under sanitizing simulator
   settings, X-propagation where supported, and multiple seeds. Archive failing seeds
   and minimize them into directed regressions.
-  `scripts/soak_harness.py` runs 256 deterministic, nonrepeating seeds through
+  `verification/constrained_random_rs/src/soak.rs` runs 256 deterministic, nonrepeating seeds through
   a 64-iteration MiSTer-wrapper program while independently randomizing
   `CPU_CE` and memory readiness. The dedicated Verilator build enables unique
   X assignment/initialization and instruments all generated C++ with AddressSanitizer
@@ -3580,7 +3584,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   The rewritten constraint file explicitly targets `arm7tdmis_top`, defines
   only `CLK`, treats `DBGTCKEN` and raw interrupt/debug controls as
   synchronous inputs, and contains no chip-wrapper DFT pins.
-  `scripts/tests/test_sdc_contract.py` checks those invariants and separately
+  `verification/constrained_random_rs/src/fpga_contract.rs` checks those invariants and separately
   checks the canonical FPGA wrapper's real clock/async boundary.
 - [x] **FPGA-002:** Choose exact MiSTer/Cyclone V part and board clock. Constrain all
   real clocks, generated enables/interfaces, I/O delays, async controls, reset recovery/
@@ -3594,7 +3598,8 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   instead of using a wildcard waiver. The clean Quartus Lite 17.0.2 four-corner
   fit at fitter seed 4 reports +0.031 ns minimum setup and +0.060 ns minimum
   hold slack, with zero unconstrained clocks, input ports, input-port paths,
-  output ports, and output-port paths. `scripts/mister_framework_build.py`
+  output ports, and output-port paths. The Rust `mister-framework` runner in
+  `verification/constrained_random_rs/src/mister_framework.rs`
   rejects a wrong core clock hierarchy/frequency, wrong seed, negative slack,
   critical warning, unexpected ignored constraint, any nonzero unconstrained
   category, or missing bitstream; its mutation tests are mandatory in
@@ -3610,7 +3615,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   profiles synthesis, fit, assembly, and four-corner TimeQuest complete; all
   setup/hold/pulse-width slacks are nonnegative; the design is fully
   constrained; and a nonempty SOF is emitted.
-  `scripts/quartus_report_check.py` rejects missing stages/images, critical
+  The Rust `quartus-report-check` command rejects missing stages/images, critical
   warnings, ignored constraints, unconstrained endpoints, negative slack, wrong
   top/device, and profile-specific resource-budget overruns. Both full flows
   are mandatory phases of `make -C scripts regress`; quick regression runs
@@ -3618,7 +3623,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
 - [x] **FPGA-004:** Run an independent synthesizer/linter where supported and CDC/RDC
   analysis. Resolve combinational loops, inferred latches, multiple drivers,
   simulation/synthesis mismatches, unsafe synchronizers, and reset-domain crossings.
-  `scripts/independent_lint.py` requires checksum-installed Slang
+  The Rust `independent-lint` command requires checksum-installed Slang
   11.0.0+7ddf4059f and independently elaborates the raw core, canonical
   wrapper, no-DFT compatibility top, FPGA example, and generic SoC with zero
   errors and zero warnings. It records tool/source/diagnostic hashes in
@@ -3626,7 +3631,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   analysis independently reject latches, loops, driver conflicts, and
   simulation/synthesis-invalid constructs already forbidden by fatal
   Verilator and Quartus gates.
-  `scripts/cdc_rdc_check.py` checks every production `always_ff` against the
+  The Rust `cdc-rdc` command checks every production `always_ff` against the
   reviewed `verification/cdc_rdc_manifest.json`: all 37 sequential blocks
   use the sole `CLK` domain, all 15 asynchronous reset sensitivities use an
   approved raw or synchronized-release reset, both reset-release instances
@@ -3642,7 +3647,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
 - [x] **FPGA-005:** Verify RAM/DSP/clock-enable inference in reports. Publish ALM,
   register, MLAB/M10K, DSP, clock, power estimate, and Fmax data with budget headroom.
   Both complete flows now run vectorless PowerPlay before
-  `scripts/quartus_report_check.py`, which fails on absent Fmax, power,
+  the Rust `quartus-report-check` command, which fails on absent Fmax, power,
   confidence, or clock-enable fields in addition to the existing fit/timing
   gates. `docs/PERFORMANCE.md` publishes the checked resources, clock-enable
   inference, zero MLAB/M10K bits, six DSP blocks, budget headroom, worst-model
@@ -3650,12 +3655,13 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   `verification/fpga_characterization.json` binds every published profile to
   the producing clean commit, exact characterization commands, and SHA-256 of
   every RTL, project, constraint, top, and checker input.
-  `test_characterization_contract.py` and `test_quartus_report_check.py`
+  `characterization_contract.rs` and the Rust `quartus_reports.rs` tests
   freeze the flow, schema, input hashes, and cross-document metrics so stale
   characterization cannot remain checked.
 - [x] **FPGA-006:** Prove synthesis equivalence or run post-synthesis simulation for
   architectural smoke, stalls, reset, endian, exceptions, and wrapper transactions.
-  `scripts/postfit_sim.py` creates isolated Quartus Lite 17.0.2 projects for
+  The Rust `verification/constrained_random_rs/src/postfit_sim.rs` runner
+  creates isolated Quartus Lite 17.0.2 projects for
   little- and big-endian `arm7tdmi_mister` instances on `5CSEBA6U23I7`, runs
   synthesis and fit, emits functional post-fit Verilog without modifying any
   checked QSF, rejects unmodeled/encrypted primitives, and executes each
@@ -3688,10 +3694,11 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   so neither a Table 8 row nor its physical-scope caveat can disappear.
   The contract locks the exact 242-page PDF identity, all 37 Table 8-1 rows,
   all five Chapter 8 figures, the Figure 8-4 naming conflict, Appendix B.3,
-  and explicit clock/reset/debug/DFT/power ownership. `scripts/ac_timing.py`
-  independently reconstructs the table, validates every source percentage
-  and signal group, and requires an exact active SDC marker/command for all
-  37 rows; `test_ac_timing_contract.py` mutates row order, values, scope,
+  and explicit clock/reset/debug/DFT/power ownership. The Rust
+  `verification/constrained_random_rs/src/ac_timing.rs` checker uses an
+  independent reference table, validates every source percentage and signal
+  group, and requires an exact active SDC marker/command for all
+  37 rows; its Rust tests mutate row order, values, scope,
   figure membership, ownership, and constraints to prove fail-closed
   behavior. The raw `5CSEBA6U23I7` profile translates the applicable source
   fractions at 16 MHz without adding an architectural cycle and passes
@@ -3707,7 +3714,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   until linked sign-off evidence exists. `README.md` now defines VERIFIED,
   IMPLEMENTED-UNVERIFIED, and PARTIAL; reports subsystem evidence separately from
   whole-release status; and links every summary to the canonical ledger/contracts.
-  `test_documentation_contract.py` rejects the known stale baseline claims.
+  `verification/constrained_random_rs/src/documentation_contract.rs` rejects the known stale baseline claims.
 - [x] **DOC-002:** Correct documentation for LDM/STM aborts, exception priority/LR,
   logical V preservation, PC values, STM/coprocessor cycles, endianness, CP14, absence
   of internal CP15, monitor/debug limitations, ETM, and DFT. The executable
@@ -3719,17 +3726,18 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   → latest result. Also prove every RTL feature and every test maps back to a
   requirement.
   `verification/traceability.json` is the reviewed ownership map and
-  `scripts/traceability_report.py` expands the canonical §31 ledger into
+  `verification/constrained_random_rs/src/traceability_report.rs` expands the
+  canonical §31 ledger into
   schema `arm7tdmis-traceability-v1`: all 122 requirement rows carry source,
   RTL/disposition, tests/disposition, acceptance bin, ledger status, and the
   latest available regression result. Its reverse tables map every tracked RTL
-  file and every tracked SystemVerilog/Python/program verification source back
+  file and every tracked SystemVerilog/Rust/program verification source back
   to owning requirement IDs. `make -C scripts traceability` fails on any
   empty row, unknown ID, or unmapped source. It is the final mandatory
-  regression phase; `release_evidence.py` verifies its schema, commit, and
+  regression phase; the Rust `release-evidence` command verifies its schema, commit, and
   empty-unmapped lists before archiving it. `docs/TRACEABILITY.md` defines the
   bidirectional scope and result semantics, and
-  `test_traceability_contract.py` prevents any side of the contract from
+  Rust tests in `traceability_report.rs` prevent any side of the contract from
   silently shrinking.
 - [x] **DOC-004:** Publish the two integration APIs with timing diagrams, reset and
   clock rules, parameter/tie-off tables, error behavior, synthesis examples, and
@@ -3738,7 +3746,7 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   contracts and contain the edge diagrams, reset/clock/response rules,
   option or tie-off tables, error semantics, complete example ownership,
   checked synthesis commands, and compatibility policy.
-  `scripts/tests/test_release_hygiene.py` fails if either contract loses a
+  `verification/constrained_random_rs/src/release_evidence/release_hygiene_contracts.rs` fails if either contract loses a
   required section.
 - [x] **DOC-005:** Record copyright/license/SPDX status for RTL, tests, manuals,
   third-party suites, reference emulator code, MiSTer fragments, firmware, and ROM
@@ -3747,21 +3755,21 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   hand-encoded programs, tools, docs, FPGA fragments, included Arm manual,
   non-vendored errata, absent third-party suites/reference emulators, and
   user-supplied firmware/ROM policy with explicit SPDX conclusions.
-  `scripts/tests/test_release_hygiene.py` enforces the document and license
+  `verification/constrained_random_rs/src/release_evidence/release_hygiene_contracts.rs` enforces the document and license
   vocabulary.
 - [x] **DOC-006:** Add a changelog, semantic version, support matrix, known-limitations
   file, security/debug notes, and a release manifest containing source/tool/spec hashes.
   `VERSION`, `CHANGELOG.md`, `docs/SUPPORT.md`, `docs/LIMITATIONS.md`, and
   `SECURITY.md` publish the prerelease contract without weakening any open
-  gate. `scripts/release_evidence.py` writes `release-manifest.json` with the
+  gate. The Rust `release-evidence` command writes `release-manifest.json` with the
   project version; commit, Git-tree, and source hashes; canonical tool-version
   and executable manifests; exact TRM/license hashes; and every evidence-file
-  hash. `scripts/tests/test_release_hygiene.py` locks the schema and documents.
+  hash. `verification/constrained_random_rs/src/release_evidence/release_hygiene_contracts.rs` locks the schema and documents.
 - [x] **DOC-007:** Remove stale "pending", "scaffold", and "deferred" comments only
   when the corresponding requirement is verified; otherwise keep them and link the
   owning task ID. Obsolete scaffold/milestone language was removed from the verified
   memory and JTAG paths; remaining occurrences describe real pending state or
-  deliberate same-instruction deferral. `test_documentation_contract.py` prevents
+  deliberate same-instruction deferral. `verification/constrained_random_rs/src/documentation_contract.rs` prevents
   those two stale comments from returning.
 - [x] **DOC-008:** Add a revision-locked, executable coverage inventory for
   the complete ARM DDI 0234B r4p3 manual: all 207 numbered sections and
@@ -3774,11 +3782,12 @@ FR002-PRDC-002719 7.0, not only the four that still affect r4p3:
   mandatory regression and release-evidence phase so §31 cannot again be
   inferred complete from broad chapter-level prose.
   `verification/trm_coverage.json` records the exact 361-item inventory and
-  nineteen nonoverlapping disposition groups. `scripts/trm_coverage.py`
+  nineteen nonoverlapping disposition groups. The Rust
+  `verification/constrained_random_rs/src/trm_coverage.rs` checker
   independently reconstructs the expected numbering/signal sets, checks the
   PDF bytes and SHA-256, validates every requirement state/evidence path, and
   writes schema `arm7tdmis-trm-coverage-v1`.
-  `test_trm_coverage_contract.py` mutates missing/duplicate items, source
+  Its Rust contract tests mutate missing/duplicate items, source
   identity, requirement ownership, and evidence paths. `trm-coverage` runs in
   every regression profile, and release packaging revalidates its clean
   same-commit input hashes. `docs/TRM_COVERAGE.md` defines the disposition
