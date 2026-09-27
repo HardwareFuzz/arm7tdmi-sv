@@ -98,7 +98,6 @@ pub(super) fn command(arguments: &[String]) -> Result<String, String> {
         source_sha256: source.to_owned(),
         tools,
         created_utc: crate::campaign::utc_now(),
-        python_executable: None,
         output: options.output,
         regression_path: Some(options.regression),
         coverage_path: Some(options.coverage),

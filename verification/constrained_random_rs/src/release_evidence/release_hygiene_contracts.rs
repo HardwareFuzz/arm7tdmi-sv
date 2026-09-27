@@ -93,7 +93,6 @@ fn request(tools: BTreeMap<String, String>) -> ManifestRequest {
         source_sha256: "b".repeat(64),
         tools,
         created_utc: "2026-01-01T00:00:00+00:00".into(),
-        python_executable: None,
         output: None,
         regression_path: None,
         coverage_path: None,
@@ -106,7 +105,7 @@ fn release_manifest_hashes_source_tools_spec_and_files() {
     let tools = BTreeMap::from([
         ("verilator".to_owned(), "Verilator unit".to_owned()),
         ("quartus".to_owned(), "Quartus unit".to_owned()),
-        ("python".to_owned(), "Python unit".to_owned()),
+        ("rustc".to_owned(), "rustc unit".to_owned()),
     ]);
     let manifest = build_manifest(&root, &request(tools.clone())).unwrap();
     assert_eq!(manifest["schema"], MANIFEST_SCHEMA);
@@ -116,6 +115,7 @@ fn release_manifest_hashes_source_tools_spec_and_files() {
     let sha256 = Regex::new(r"^[0-9a-f]{64}$").unwrap();
     assert!(sha256.is_match(manifest["source"]["git_tree_sha256"].as_str().unwrap()));
     assert_eq!(manifest["tools"]["versions"], json!(tools));
+    assert!(manifest["tools"]["executables"]["rustc"]["sha256"].is_string());
     let expected_tool_digest = format!("{:x}", Sha256::digest(serde_json::to_vec(&tools).unwrap()));
     assert_eq!(manifest["tools"]["versions_sha256"], expected_tool_digest);
     let specifications = manifest["specifications"]

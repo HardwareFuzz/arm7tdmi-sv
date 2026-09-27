@@ -364,7 +364,6 @@ mod tests {
             source_sha256,
             tools: BTreeMap::new(),
             created_utc: "2026-01-01T00:00:00+00:00".into(),
-            python_executable: None,
             output: None,
             regression_path: None,
             coverage_path: None,

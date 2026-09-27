@@ -38,8 +38,6 @@ struct ManifestRequest {
     tools: BTreeMap<String, String>,
     created_utc: String,
     #[serde(default)]
-    python_executable: Option<PathBuf>,
-    #[serde(default)]
     output: Option<PathBuf>,
     #[serde(default)]
     regression_path: Option<PathBuf>,
@@ -128,12 +126,9 @@ fn tool_executable_manifest(request: &ManifestRequest) -> Result<Value, String> 
             "clang" => PathBuf::from("clang"),
             "git" => PathBuf::from("git"),
             "make" => PathBuf::from("make"),
-            "python" => request
-                .python_executable
-                .clone()
-                .unwrap_or_else(|| PathBuf::from("python3")),
             "qemu" => PathBuf::from("qemu-system-arm"),
             "quartus" => PathBuf::from("quartus_map"),
+            "rustc" => PathBuf::from("rustc"),
             "verilator" => PathBuf::from("verilator"),
             _ => continue,
         };
@@ -1148,7 +1143,6 @@ mod tests {
             source_sha256: "b".repeat(64),
             tools: BTreeMap::from([("unknown-tool".into(), "version".into())]),
             created_utc: "2026-01-01T00:00:00+00:00".into(),
-            python_executable: None,
             output: None,
             regression_path: None,
             coverage_path: None,
@@ -1179,7 +1173,6 @@ mod tests {
             source_sha256: "b".repeat(64),
             tools: BTreeMap::new(),
             created_utc: "2026-01-01T00:00:00+00:00".into(),
-            python_executable: None,
             output: None,
             regression_path: None,
             coverage_path: None,
