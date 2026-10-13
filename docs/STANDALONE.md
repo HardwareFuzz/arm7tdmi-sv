@@ -61,7 +61,7 @@ simulator diagnostics on stdout/stderr are not part of the result protocol.
 |---|---|
 | `+PROGRAM_HEX=path` | Required `$readmemh` image of 32-bit words. Each word is stored little endian. Sparse `@word_index` offsets are supported. RAM is zero-filled before loading. |
 | `+RESULT_JSONL=path` | Required result file, created or overwritten. Use a different path for every concurrent run. |
-| `+STOP_PC=hex` | Required byte address. Capture state **after** the instruction at this PC retires without an exception, then stop. Append a NOP when the intended boundary is after the last tested instruction. |
+| `+STOP_PC=hex` | Required byte address. Stop only after a sequential NOP retires there without an exception: A32 `MOV Rd,Rd` with `Rd` other than PC, or the T32 `MOV r8,r8` marker (`0x46c0`). A branch or other instruction at this address does not complete the run; the cycle bound produces an incomplete timeout result. Append the marker after the last tested instruction. |
 | `+MEMORY_BASE=hex` | First byte of the memory window to capture; default `10000` (hexadecimal). |
 | `+MEMORY_LENGTH=decimal` | Number of bytes to capture; default `128`. Must be positive and fit in RAM. |
 | `+MAX_CYCLES=decimal` | Cycle bound after reset release; default `1000000`. Must be positive. |
@@ -136,6 +136,11 @@ The last line has `kind: "result"` and contains:
   lines. Retirement includes condition-failed and synchronously faulting
   instruction dispositions, as defined by VER-009.
 - `last_retired_pc`, separate from the architectural register file.
+- `next_pc` on successful completion, computed at the observed sequential
+  completion NOP retirement from its PC and ARM/Thumb state. Its source is
+  `sequential_completion_retirement`. This is the next instruction address at
+  the selected stop boundary, not a sampled physical R15 register. A timeout
+  has `next_pc: null` and `next_pc_source: unavailable`.
 - `registers.r0` through `registers.r14`, selected from the active register
   bank according to the captured CPSR mode. `registers.r15` is null and
   `r15_availability` is `unavailable`: VER-009's physical slot 15 is a layout

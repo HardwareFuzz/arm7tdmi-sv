@@ -71,6 +71,7 @@ module arm7tdmis_standalone_tb
     longint unsigned retired_count = 0;
     longint unsigned exception_count = 0;
     logic [31:0] last_retired_pc = 0;
+    bit last_retired_thumb = 1'b0;
     bit finished = 1'b0;
 
     function automatic int active_index(input int number, input logic [4:0] mode);
@@ -84,6 +85,22 @@ module arm7tdmis_standalone_tb
             5'(MODE_UNDEFINED): return number + 16;
             default: return number;
         endcase
+    endfunction
+
+    function automatic bit sequential_completion_nop;
+        logic [31:0] opcode;
+        logic [3:0] destination;
+        opcode = VER_RETIRE_OPCODE;
+        if (VER_RETIRE_THUMB) return opcode[15:0] === 16'h46c0;
+        destination = opcode[15:12];
+        return opcode[31:28] == 4'he
+            && opcode[27:25] == 3'b000
+            && opcode[24:21] == 4'b1101
+            && opcode[20] == 1'b0
+            && opcode[19:16] == 4'b0000
+            && opcode[11:4] == 8'b0
+            && opcode[3:0] == destination
+            && destination != 4'hf;
     endfunction
 
     function automatic string cause_name(input logic [2:0] code);
@@ -151,6 +168,16 @@ module arm7tdmis_standalone_tb
             cycles, retired_count, exception_count, exception_count);
         if (retired_count != 0) $fwrite(result_fd, "\"0x%08x\"", last_retired_pc);
         else $fwrite(result_fd, "null");
+        // The completion contract stops only on a normally retired sequential
+        // NOP.  Its observed retirement PC and ISA state identify the next
+        // instruction boundary.  This is separate from the unobservable
+        // physical R15 storage slot below.
+        if (complete)
+            $fwrite(result_fd,
+                ",\"next_pc\":\"0x%08x\",\"next_pc_source\":\"sequential_completion_retirement\"",
+                last_retired_pc + (last_retired_thumb ? 32'd2 : 32'd4));
+        else
+            $fwrite(result_fd, ",\"next_pc\":null,\"next_pc_source\":\"unavailable\"");
         $fwrite(result_fd, ",\"registers\":{");
         for (int r = 0; r < 15; r++) begin
             physical = active_index(r, VER_RETIRE_CPSR[4:0]);
@@ -185,9 +212,10 @@ module arm7tdmis_standalone_tb
             if (VER_RETIRE_VALID) begin
                 retired_count++;
                 last_retired_pc = VER_RETIRE_PC;
+                last_retired_thumb = VER_RETIRE_THUMB;
             end
             if (VER_RETIRE_VALID && VER_RETIRE_PC == stop_pc
-                && !VER_RETIRE_EXCEPTION_VALID) begin
+                && !VER_RETIRE_EXCEPTION_VALID && sequential_completion_nop()) begin
                 emit_result(1'b1);
                 $finish;
             end else if (cycles >= 64'(max_cycles)) begin

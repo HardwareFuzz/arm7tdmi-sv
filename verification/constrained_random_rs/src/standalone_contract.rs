@@ -191,6 +191,12 @@ fn completed(
     instructions: &[u32],
     options: Options<'_>,
 ) -> Result<Completed, Failure> {
+    let stop_pc = options
+        .stop_pc
+        .unwrap_or(0x100 + (instructions.len() as u32 - 1) * 4);
+    let stop_is_thumb = !options.thumb.is_empty()
+        && (0x200..0x200 + options.thumb.len() as u32 * 2).contains(&stop_pc);
+    let expected_next_pc = stop_pc + if stop_is_thumb { 2 } else { 4 };
     let execution = execute(binary, instructions, options)?;
     require!(
         execution.status.success(),
@@ -232,6 +238,15 @@ fn completed(
     require!(
         result["status"] == "completed",
         "wrong successful result status"
+    );
+    require!(
+        result["last_retired_pc"] == format!("0x{stop_pc:08x}"),
+        "successful result does not identify the STOP_PC retirement"
+    );
+    require!(
+        result["next_pc"] == format!("0x{expected_next_pc:08x}")
+            && result["next_pc_source"] == "sequential_completion_retirement",
+        "successful result does not identify the sequential next-PC boundary"
     );
     require!(
         events.iter().all(|event| event["kind"] == "exception"),
@@ -353,8 +368,17 @@ fn synchronous_fault_recovery(binary: &Path) -> Result<(), Failure> {
         "wrong synchronous causes"
     );
     require!(
-        completed.events[1]["instruction_bytes"] == "f000f0e7",
-        "wrong undefined instruction bytes"
+        completed.events.iter().all(|event| {
+            event["faulting_instruction"] == true
+                && event["instruction_width"] == 4
+                && event["thumb"] == false
+        }),
+        "synchronous fault lacks an explicit A32 faulting-instruction identity"
+    );
+    require!(
+        event_strings(&completed.events, "instruction_bytes")
+            == [Some("420000ef"), Some("f000f0e7"), Some("100000ee")],
+        "wrong synchronous fault instruction bytes"
     );
     require!(
         register(&completed.result, "r0")? == 6,
@@ -427,6 +451,13 @@ fn unmapped_store(binary: &Path) -> Result<(), Failure> {
         completed.events[0]["raw_reason_code"] == 4,
         "wrong data abort code"
     );
+    require!(
+        completed.events[0]["faulting_instruction"] == true
+            && completed.events[0]["instruction_width"] == 4
+            && completed.events[0]["thumb"] == false
+            && completed.events[0]["instruction_bytes"] == "000083e5",
+        "data abort lacks the observed A32 store identity"
+    );
     let vector_bytes: String = branch(0, 0x100)
         .to_le_bytes()
         .iter()
@@ -456,6 +487,11 @@ fn unmapped_fetch(binary: &Path) -> Result<(), Failure> {
         event_strings(&completed.events, "pc") == [Some("0x00040000")]
             && event_strings(&completed.events, "cause") == [Some("prefetch_abort")],
         "unmapped fetch did not cause the expected prefetch abort"
+    );
+    require!(
+        completed.events[0]["raw_reason_code"] == 3
+            && completed.events[0]["faulting_instruction"] == true,
+        "prefetch abort lacks its raw code or failed-fetch disposition"
     );
     require!(
         completed.events[0]["instruction_bytes"].is_null()
@@ -508,6 +544,35 @@ fn timeout_preserves_events(binary: &Path) -> Result<(), Failure> {
     require!(
         result["exception_count"].as_u64() == Some((execution.rows.len() - 2) as u64),
         "timeout event count does not match JSONL stream"
+    );
+    Ok(())
+}
+
+fn non_nop_stop_does_not_claim_completion(binary: &Path) -> Result<(), Failure> {
+    let execution = execute(
+        binary,
+        &[branch(0x100, 0x100)],
+        Options {
+            stop_pc: Some(0x100),
+            max_cycles: 200,
+            ..Options::default()
+        },
+    )?;
+    require!(
+        !execution.status.success(),
+        "branch at STOP_PC was treated as completion"
+    );
+    let result = execution
+        .rows
+        .last()
+        .ok_or_else(|| Failure::other("branch stop case omitted its result"))?;
+    require!(
+        result["kind"] == "result" && result["complete"] == false,
+        "branch at STOP_PC emitted a complete result"
+    );
+    require!(
+        result["next_pc"].is_null() && result["next_pc_source"] == "unavailable",
+        "incomplete branch stop case fabricated a next PC"
     );
     Ok(())
 }
@@ -579,7 +644,7 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
     let binary =
         Path::new(&crate::option(arguments, "--binary").map_err(Failure::other)?).canonicalize()?;
     require!(binary.is_file(), "standalone RTL binary is missing");
-    let cases: [ContractCase; 9] = [
+    let cases: [ContractCase; 10] = [
         ("arithmetic_and_memory", arithmetic_and_memory),
         ("synchronous_fault_recovery", synchronous_fault_recovery),
         ("thumb_faults", thumb_faults),
@@ -587,6 +652,10 @@ fn run(arguments: &[String]) -> Result<(), Failure> {
         ("unmapped_fetch", unmapped_fetch),
         ("unbounded_event_stream", unbounded_event_stream),
         ("timeout_preserves_events", timeout_preserves_events),
+        (
+            "non_nop_stop_does_not_claim_completion",
+            non_nop_stop_does_not_claim_completion,
+        ),
         ("invalid_bounds_and_limits", invalid_bounds_and_limits),
         ("invalid_program_images", invalid_program_images),
     ];
