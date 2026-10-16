@@ -11,6 +11,10 @@ module arm7tdmis_standalone_tb
 #(parameter int MEMORY_WORDS = 65536);
 
     localparam int MEMORY_BYTES = MEMORY_WORDS * 4;
+    // Independent external RAM for GBA-compatible classic Thumb pairs. The
+    // CPU sees the actual high bus address; this storage never aliases RAM.
+    localparam logic [31:0] IWRAM_BASE = 32'h03000000;
+    localparam int IWRAM_BYTES = 32768;
     logic CLK;
     initial begin
         CLK = 1'b0;
@@ -52,17 +56,42 @@ module arm7tdmis_standalone_tb
     // The shared memory indexes by low address bits. Abort an unmapped
     // transaction so an invalid access cannot silently alias into RAM.
     logic [31:0] response_address;
+    logic response_write;
+    logic [1:0] response_size, response_trans;
     always_ff @(posedge CLK) begin
-        if (!nRESET) response_address <= 32'b0;
-        else response_address <= ADDR;
+        if (!nRESET) begin
+            response_address <= 32'b0;
+            response_write <= 1'b0;
+            response_size <= 2'(SIZE_WORD);
+            response_trans <= 2'(TRANS_I);
+        end else begin
+            response_address <= ADDR;
+            response_write <= WRITE;
+            response_size <= SIZE;
+            response_trans <= TRANS;
+        end
     end
+    wire iwram_address = ADDR >= IWRAM_BASE && ADDR < IWRAM_BASE + IWRAM_BYTES;
+    wire iwram_response = response_address >= IWRAM_BASE
+        && response_address < IWRAM_BASE + IWRAM_BYTES;
+    wire [31:0] low_rdata, iwram_rdata;
+    wire low_abort, iwram_abort;
     arm7tdmis_memory #(.WORDS(MEMORY_WORDS)) u_mem (
         .CLK, .CLKEN(1'b1), .nRESET, .CFGBIGEND(1'b0),
-        .ADDR, .WRITE, .SIZE, .PROT, .LOCK, .TRANS, .WDATA, .RDATA,
-        .ABORT, .inject_abort(response_address >= 32'(MEMORY_BYTES))
+        .ADDR, .WRITE, .SIZE, .PROT, .LOCK,
+        .TRANS(iwram_address ? 2'(TRANS_I) : TRANS), .WDATA, .RDATA(low_rdata),
+        .ABORT(low_abort), .inject_abort(response_address >= 32'(MEMORY_BYTES))
     );
+    arm7tdmis_memory #(.WORDS(IWRAM_BYTES / 4)) u_iwram (
+        .CLK, .CLKEN(1'b1), .nRESET, .CFGBIGEND(1'b0),
+        .ADDR(ADDR - IWRAM_BASE), .WRITE, .SIZE, .PROT, .LOCK,
+        .TRANS(iwram_address ? TRANS : 2'(TRANS_I)), .WDATA, .RDATA(iwram_rdata),
+        .ABORT(iwram_abort), .inject_abort(1'b0)
+    );
+    assign RDATA = iwram_response ? iwram_rdata : low_rdata;
+    assign ABORT = iwram_response ? iwram_abort : low_abort;
 
-    string program_hex, result_jsonl;
+    string program_hex, iwram_hex, result_jsonl;
     int result_fd;
     logic [31:0] stop_pc, memory_base;
     int signed memory_length = 128;
@@ -73,6 +102,9 @@ module arm7tdmis_standalone_tb
     logic [31:0] last_retired_pc = 0;
     bit last_retired_thumb = 1'b0;
     bit finished = 1'b0;
+    localparam logic [31:0] GUEST_CONSOLE = 32'h0000ff00;
+    logic [31:0] guest_frame [0:7];
+    int guest_word_count = 0;
 
     function automatic int active_index(input int number, input logic [4:0] mode);
         if (number <= 7) return number;
@@ -127,24 +159,39 @@ module arm7tdmis_standalone_tb
 
     task automatic emit_exception;
         bit faulting;
-        faulting = VER_RETIRE_VALID
-            && VER_RETIRE_EXCEPTION != 3'(EXC_IRQ)
-            && VER_RETIRE_EXCEPTION != 3'(EXC_FIQ)
-            && VER_RETIRE_EXCEPTION != 3'(EXC_RESET);
+        bit thumb;
+        int width;
+        logic [2:0] reason;
+        // This frame was emitted by eight completed guest stores. No exception
+        // pulse or internal CPU register supplies the event identity.
+        if (guest_frame[0] != 32'h41584531 || guest_frame[7] != 32'hbea7bace
+            || guest_frame[6] > 1)
+            $fatal(1, "[standalone] malformed guest exception console frame");
+        case (guest_frame[1])
+            4: reason = 3'(EXC_UNDEF);
+            8: reason = 3'(EXC_SWI);
+            12: reason = 3'(EXC_PREFETCH_ABORT);
+            16: reason = 3'(EXC_DATA_ABORT);
+            24: reason = 3'(EXC_IRQ);
+            28: reason = 3'(EXC_FIQ);
+            default: $fatal(1, "[standalone] unknown guest exception vector");
+        endcase
+        faulting = reason != 3'(EXC_IRQ) && reason != 3'(EXC_FIQ);
+        thumb = guest_frame[4][5];
+        width = thumb ? 2 : 4;
         $fwrite(result_fd,
-            "{\"kind\":\"exception\",\"backend\":\"arm7tdmi-sv\",\"sequence\":%0d,\"cycle\":%0d,\"raw_reason_code\":%0d,\"cause\":\"%s\",\"faulting_instruction\":%s,\"pc\":",
-            exception_count, cycles, VER_RETIRE_EXCEPTION,
-            cause_name(VER_RETIRE_EXCEPTION), faulting ? "true" : "false");
-        if (faulting) $fwrite(result_fd, "\"0x%08x\"", VER_RETIRE_PC);
+            "{\"kind\":\"exception\",\"backend\":\"arm7tdmi-sv\",\"provenance\":\"guest_asm_console\",\"sequence\":%0d,\"cycle\":%0d,\"raw_reason_code\":%0d,\"cause\":\"%s\",\"saved_status\":\"0x%08x\",\"resume_pc\":\"0x%08x\",\"faulting_instruction\":%s,\"pc\":",
+            exception_count, cycles, reason, cause_name(reason),
+            guest_frame[4], guest_frame[5], faulting ? "true" : "false");
+        if (faulting) $fwrite(result_fd, "\"0x%08x\"", guest_frame[2]);
         else $fwrite(result_fd, "null");
         // A failed fetch has a fault PC but no successfully fetched opcode.
-        if (faulting && VER_RETIRE_EXCEPTION != 3'(EXC_PREFETCH_ABORT)) begin
+        if (faulting && guest_frame[6] == 1) begin
             $fwrite(result_fd,
                 ",\"thumb\":%s,\"instruction_width\":%0d,\"instruction\":\"0x%08x\",\"instruction_bytes\":\"",
-                VER_RETIRE_THUMB ? "true" : "false",
-                VER_RETIRE_THUMB ? 2 : 4, VER_RETIRE_OPCODE);
-            for (int b = 0; b < (VER_RETIRE_THUMB ? 2 : 4); b++)
-                $fwrite(result_fd, "%02x", VER_RETIRE_OPCODE[b * 8 +: 8]);
+                thumb ? "true" : "false", width, guest_frame[3]);
+            for (int b = 0; b < width; b++)
+                $fwrite(result_fd, "%02x", guest_frame[3][b * 8 +: 8]);
             $fwrite(result_fd, "\"");
         end else begin
             $fwrite(result_fd,
@@ -161,6 +208,8 @@ module arm7tdmis_standalone_tb
         string status;
         if (complete) status = "completed";
         else status = "timeout";
+        if (guest_word_count != 0)
+            $fatal(1, "[standalone] incomplete guest exception console frame");
         finished = 1'b1;
         $fwrite(result_fd,
             "{\"kind\":\"result\",\"backend\":\"arm7tdmi-sv\",\"status\":\"%s\",\"complete\":%s,\"cycles\":%0d,\"retired_count\":%0d,\"exception_count\":%0d,\"exception_log_count\":%0d,\"exception_dropped_count\":0,\"last_retired_pc\":",
@@ -196,7 +245,10 @@ module arm7tdmis_standalone_tb
             memory_base, memory_length);
         for (int offset = 0; offset < memory_length; offset++) begin
             address = memory_base + 32'(offset);
-            $fwrite(result_fd, "%02x", u_mem.mem[address >> 2][int'(address[1:0]) * 8 +: 8]);
+            if (address >= IWRAM_BASE && address < IWRAM_BASE + IWRAM_BYTES)
+                $fwrite(result_fd, "%02x", u_iwram.mem[(address - IWRAM_BASE) >> 2][int'(address[1:0]) * 8 +: 8]);
+            else
+                $fwrite(result_fd, "%02x", u_mem.mem[address >> 2][int'(address[1:0]) * 8 +: 8]);
         end
         $fwrite(result_fd, "\"}}\n");
         flush_result();
@@ -205,10 +257,24 @@ module arm7tdmis_standalone_tb
 
     initial forever begin
         @(posedge CLK);
+        // ARM7's address phase precedes the accepted data by one cycle.
+        // Observe the same completed write as the behavioral memory model.
+        if (nRESET && !finished && response_write && !ABORT
+            && (response_trans == 2'(TRANS_N) || response_trans == 2'(TRANS_S))
+            && response_address == GUEST_CONSOLE) begin
+            if (response_size != 2'(SIZE_WORD))
+                $fatal(1, "[standalone] guest console requires word stores");
+            $display("HDL_GUEST_WORD value=%08x", WDATA);
+            guest_frame[guest_word_count] = WDATA;
+            guest_word_count++;
+            if (guest_word_count == 8) begin
+                emit_exception();
+                guest_word_count = 0;
+            end
+        end
         #1;
         if (nRESET && !finished) begin
             cycles++;
-            if (VER_RETIRE_EXCEPTION_VALID) emit_exception();
             if (VER_RETIRE_VALID) begin
                 retired_count++;
                 last_retired_pc = VER_RETIRE_PC;
@@ -242,7 +308,9 @@ module arm7tdmis_standalone_tb
         if (stop_pc >= 32'(MEMORY_BYTES) || stop_pc[0])
             $fatal(1, "[standalone] STOP_PC must be a halfword-aligned RAM address");
         if (max_cycles <= 0 || memory_length <= 0
-            || 64'(memory_base) + 64'(memory_length) > 64'(MEMORY_BYTES))
+            || !(64'(memory_base) + 64'(memory_length) <= 64'(MEMORY_BYTES)
+                || (memory_base >= IWRAM_BASE
+                    && 64'(memory_base) + 64'(memory_length) <= 64'(IWRAM_BASE) + 64'(IWRAM_BYTES))))
             $fatal(1, "[standalone] invalid cycle limit or memory window");
         // Some simulators only warn when $readmemh cannot open its input.
         // Reject that case before executing the zero-initialized RAM.
@@ -251,12 +319,21 @@ module arm7tdmis_standalone_tb
         if ($fgetc(program_fd) == -1) $fatal(1, "[standalone] empty PROGRAM_HEX");
         $fclose(program_fd);
         for (int word = 0; word < MEMORY_WORDS; word++) u_mem.mem[word] = 0;
+        for (int word = 0; word < IWRAM_BYTES / 4; word++) u_iwram.mem[word] = 0;
         $readmemh(program_hex, u_mem.mem);
+        if ($value$plusargs("IWRAM_HEX=%s", iwram_hex)) begin
+            program_fd = $fopen(iwram_hex, "r");
+            if (program_fd == 0) $fatal(1, "[standalone] cannot open IWRAM_HEX");
+            if ($fgetc(program_fd) == -1) $fatal(1, "[standalone] empty IWRAM_HEX");
+            $fclose(program_fd);
+            $readmemh(iwram_hex, u_iwram.mem);
+        end
         result_fd = $fopen(result_jsonl, "w");
         if (result_fd == 0) $fatal(1, "[standalone] cannot open RESULT_JSONL");
         $fwrite(result_fd,
-            "{\"kind\":\"header\",\"schema\":\"arm7tdmis-standalone-v1\",\"backend\":\"arm7tdmi-sv\",\"execution_backend\":\"arm7tdmi-sv\",\"reference_only\":false,\"byte_order\":\"little\",\"raw_reason_code_namespace\":\"arm7tdmis.exception_e-v1\",\"stop_pc\":\"0x%08x\",\"memory_capacity\":%0d}\n",
-            stop_pc, MEMORY_BYTES);
+            "{\"kind\":\"header\",\"schema\":\"arm7tdmis-standalone-v1\",\"backend\":\"arm7tdmi-sv\",\"execution_backend\":\"arm7tdmi-sv\",\"reference_only\":false,\"byte_order\":\"little\",\"raw_reason_code_namespace\":\"arm7tdmis.exception_e-v1\",\"exception_source\":\"guest_asm_console_v1\",\"stop_pc\":\"0x%08x\",\"memory_capacity\":%0d,\"iwram_base\":%0d,\"iwram_capacity\":%0d,\"iwram_independent\":true}\n",
+            stop_pc, MEMORY_BYTES, IWRAM_BASE, IWRAM_BYTES);
+        $display("HDL_GUEST_CONSOLE protocol=guest_asm_console_v1 address=0000ff00");
         flush_result();
         repeat (4) @(posedge CLK);
         @(negedge CLK);
@@ -266,5 +343,5 @@ module arm7tdmis_standalone_tb
     wire _unused = &{1'b0, CPnMREQ, CPSEQ, CPnTRANS, CPnOPC, CPTBIT, CPnI,
         DBGACK, DBGnEXEC, DBGINSTRVALID, DBGRNG, DBGCOMMTX, DBGCOMMRX,
         DBGTDO, DBGnTDOEN, DMORE, VER_RETIRE_CONDITION_PASS,
-        VER_RETIRE_INJECTED, VER_RETIRE_GPRS[511:480]};
+        VER_RETIRE_INJECTED, VER_RETIRE_EXCEPTION, VER_RETIRE_GPRS[511:480]};
 endmodule

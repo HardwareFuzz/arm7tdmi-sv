@@ -205,7 +205,6 @@ pub fn differential(seed: i64, instruction_count: usize) -> Differential {
         "register",
         "flags",
         "memory",
-        "exception",
         "alignment",
         "little",
     ]
@@ -256,9 +255,6 @@ pub fn differential(seed: i64, instruction_count: usize) -> Differential {
         format!("    mov r7, #0x{MODE_SUPERVISOR:02x}"),
         "    msr cpsr_c, r7".to_owned(),
     ]);
-    let mut exceptions = ["svc #0x41", ".word 0xe7f000f0"];
-    rng.shuffle(&mut exceptions);
-    mark(&mut coverage, &["svc", "undefined"]);
     let words: Vec<_> = (0..5).map(|_| rng.next_u32()).collect();
     let mut init_memory = vec!["    ldr r10, =0x00010000".to_owned()];
     for (index, word) in words.iter().enumerate() {
@@ -276,8 +272,6 @@ pub fn differential(seed: i64, instruction_count: usize) -> Differential {
         "measure_begin:".to_owned(),
     ]);
     lines.extend(mode_lines);
-    lines.push("    /* synchronous exception coverage: svc and undefined */".to_owned());
-    lines.extend(exceptions.map(|instruction| format!("    {instruction}")));
     lines.extend([
         "    /* enter MODE_USER after every privileged bank is covered */".to_owned(),
         format!("    mov r7, #0x{MODE_USER:02x}"),
@@ -340,9 +334,7 @@ thumb_random_entry:
     .ltorg /* Thumb-1 literal loads have only a 1020-byte reach */
 thumb_literals_end:";
 
-const DIFFERENTIAL_END: &str = r"    svc #0x42
-    .hword 0xde00 /* allocated Thumb undefined instruction */
-    ldr r5, =arm_random_return
+const DIFFERENTIAL_END: &str = r"    ldr r5, =arm_random_return
     bx r5
     .align 2
     .arm
