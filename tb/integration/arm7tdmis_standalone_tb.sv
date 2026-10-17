@@ -96,6 +96,8 @@ module arm7tdmis_standalone_tb
     logic [31:0] stop_pc, memory_base;
     int signed memory_length = 128;
     longint signed max_cycles = 1000000;
+    logic [31:0] assertion_result_address = 32'b0;
+    bit assertion_result_enabled = 1'b0;
     longint unsigned cycles = 0;
     longint unsigned retired_count = 0;
     longint unsigned exception_count = 0;
@@ -205,6 +207,7 @@ module arm7tdmis_standalone_tb
     task automatic emit_result(input bit complete);
         int physical;
         int unsigned address;
+        logic [31:0] assertion_receipt;
         string status;
         if (complete) status = "completed";
         else status = "timeout";
@@ -250,7 +253,18 @@ module arm7tdmis_standalone_tb
             else
                 $fwrite(result_fd, "%02x", u_mem.mem[address >> 2][int'(address[1:0]) * 8 +: 8]);
         end
-        $fwrite(result_fd, "\"}}\n");
+        $fwrite(result_fd, "\"}");
+        if (assertion_result_enabled) begin
+            if (assertion_result_address >= IWRAM_BASE
+                && assertion_result_address < IWRAM_BASE + IWRAM_BYTES)
+                assertion_receipt = u_iwram.mem[(assertion_result_address - IWRAM_BASE) >> 2];
+            else
+                assertion_receipt = u_mem.mem[assertion_result_address >> 2];
+            $fwrite(result_fd,
+                ",\"guest_assertion_receipt_address\":\"0x%08x\",\"guest_assertion_receipt\":\"0x%08x\"",
+                assertion_result_address, assertion_receipt);
+        end
+        $fwrite(result_fd, "}\n");
         flush_result();
         $fclose(result_fd);
     endtask
@@ -303,6 +317,8 @@ module arm7tdmis_standalone_tb
         void'($value$plusargs("MEMORY_BASE=%h", memory_base));
         void'($value$plusargs("MEMORY_LENGTH=%d", memory_length));
         void'($value$plusargs("MAX_CYCLES=%d", max_cycles));
+        assertion_result_enabled = $value$plusargs(
+            "ASSERTION_RESULT_ADDRESS=%h", assertion_result_address);
         if (MEMORY_WORDS <= 0 || (MEMORY_WORDS & (MEMORY_WORDS - 1)) != 0)
             $fatal(1, "[standalone] MEMORY_WORDS must be a positive power of two");
         if (stop_pc >= 32'(MEMORY_BYTES) || stop_pc[0])
@@ -312,6 +328,12 @@ module arm7tdmis_standalone_tb
                 || (memory_base >= IWRAM_BASE
                     && 64'(memory_base) + 64'(memory_length) <= 64'(IWRAM_BASE) + 64'(IWRAM_BYTES))))
             $fatal(1, "[standalone] invalid cycle limit or memory window");
+        if (assertion_result_enabled
+            && (assertion_result_address[1:0] != 2'b00
+                || !(assertion_result_address < 32'(MEMORY_BYTES)
+                    || (assertion_result_address >= IWRAM_BASE
+                        && assertion_result_address < IWRAM_BASE + IWRAM_BYTES))))
+            $fatal(1, "[standalone] invalid guest assertion receipt address");
         // Some simulators only warn when $readmemh cannot open its input.
         // Reject that case before executing the zero-initialized RAM.
         program_fd = $fopen(program_hex, "r");
