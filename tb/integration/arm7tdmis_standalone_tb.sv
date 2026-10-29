@@ -107,6 +107,17 @@ module arm7tdmis_standalone_tb
     localparam logic [31:0] GUEST_CONSOLE = 32'h0000ff00;
     logic [31:0] guest_frame [0:7];
     int guest_word_count = 0;
+    string checkpoint_file;
+    // Each observer-only row holds {instruction width, final-ELF start PC}.
+    logic [63:0] checkpoint_table [0:65535];
+    bit checkpoint_done [0:65535];
+    bit checkpoint_half_valid [0:65535];
+    logic [15:0] checkpoint_first_half [0:65535];
+    int checkpoint_count = 0;
+    int checkpoint_observed = 0;
+    bit commit_flush;
+    logic [31:0] commit_flush_pc;
+    logic [31:0] checkpoint_next_pc;
 
     function automatic int active_index(input int number, input logic [4:0] mode);
         if (number <= 7) return number;
@@ -204,6 +215,55 @@ module arm7tdmis_standalone_tb
         flush_result();
     endtask
 
+    task automatic unavailable_checkpoint(input int slot, input string reason);
+        $display("HDL_CHECKPOINT_UNAVAILABLE index=%0d pc=%08x reason=%s",
+            slot, checkpoint_table[slot][31:0], reason);
+        checkpoint_done[slot] = 1'b1;
+        checkpoint_half_valid[slot] = 1'b0;
+    endtask
+
+    task automatic emit_checkpoint(
+        input int slot, input logic [31:0] instruction_pc,
+        input logic [31:0] opcode, input int width
+    );
+        int physical;
+        int unsigned address;
+        $display("HDL_CHECKPOINT_BEGIN index=%0d pc=%08x instruction=%08x width=%0d cycle=%0d",
+            slot, instruction_pc, opcode, width, cycles);
+        $write("HDL_CHECKPOINT_REGS");
+        for (int r = 0; r < 15; r++) begin
+            physical = active_index(r, VER_RETIRE_CPSR[4:0]);
+            $write(" r%0d=%08x", r, VER_RETIRE_GPRS[physical * 32 +: 32]);
+        end
+        // Slot 15 is a layout hole. The next PC below comes from the actual
+        // commit redirect, or a nonredirecting retirement's sequential edge.
+        $write(" pc=%08x cpsr=%08x", checkpoint_next_pc, VER_RETIRE_CPSR);
+        case (VER_RETIRE_CPSR[4:0])
+            5'(MODE_FIQ): $write(" spsr=%08x", VER_RETIRE_SPSRS[31:0]);
+            5'(MODE_IRQ): $write(" spsr=%08x", VER_RETIRE_SPSRS[63:32]);
+            5'(MODE_SUPERVISOR): $write(" spsr=%08x", VER_RETIRE_SPSRS[95:64]);
+            5'(MODE_ABORT): $write(" spsr=%08x", VER_RETIRE_SPSRS[127:96]);
+            5'(MODE_UNDEFINED): $write(" spsr=%08x", VER_RETIRE_SPSRS[159:128]);
+            default: begin end
+        endcase
+        $write("\n");
+        $display("HDL_CHECKPOINT_MEMORY_CAPTURE supported=true base=%08x length=%08x stride=00000004 count=%0d",
+            memory_base, memory_length, memory_length / 4);
+        for (int offset = 0; offset < memory_length; offset += 4) begin
+            address = memory_base + 32'(offset);
+            if (address >= IWRAM_BASE && address < IWRAM_BASE + IWRAM_BYTES)
+                $display("HDL_CHECKPOINT_MEM addr=%08x value=%08x", address,
+                    u_iwram.mem[(address - IWRAM_BASE) >> 2]);
+            else
+                $display("HDL_CHECKPOINT_MEM addr=%08x value=%08x", address,
+                    u_mem.mem[address >> 2]);
+        end
+        $display("HDL_CHECKPOINT_END index=%0d", slot);
+        checkpoint_done[slot] = 1'b1;
+        checkpoint_half_valid[slot] = 1'b0;
+        checkpoint_observed++;
+    endtask
+
     task automatic emit_result(input bit complete);
         int physical;
         int unsigned address;
@@ -213,6 +273,13 @@ module arm7tdmis_standalone_tb
         else status = "timeout";
         if (guest_word_count != 0)
             $fatal(1, "[standalone] incomplete guest exception console frame");
+        if (checkpoint_count != 0) begin
+            for (int slot = 0; slot < checkpoint_count; slot++)
+                if (checkpoint_half_valid[slot] && !checkpoint_done[slot])
+                    unavailable_checkpoint(slot, "incomplete_thumb_instruction");
+            $display("HDL_CHECKPOINT_CAPTURE supported=true requested=%0d observed=%0d closed=%0s source=rtl_retirement_port",
+                checkpoint_count, checkpoint_observed, complete ? "true" : "false");
+        end
         finished = 1'b1;
         $fwrite(result_fd,
             "{\"kind\":\"result\",\"backend\":\"arm7tdmi-sv\",\"status\":\"%s\",\"complete\":%s,\"cycles\":%0d,\"retired_count\":%0d,\"exception_count\":%0d,\"exception_log_count\":%0d,\"exception_dropped_count\":0,\"last_retired_pc\":",
@@ -271,6 +338,10 @@ module arm7tdmis_standalone_tb
 
     initial forever begin
         @(posedge CLK);
+        // Observe the redirect selected for this enabled commit before NBA
+        // changes the core's live state. This never drives a CPU signal.
+        commit_flush = u_dut.u_core.flush;
+        commit_flush_pc = u_dut.u_core.flush_target_pc;
         // ARM7's address phase precedes the accepted data by one cycle.
         // Observe the same completed write as the behavioral memory model.
         if (nRESET && !finished && response_write && !ABORT
@@ -293,6 +364,42 @@ module arm7tdmis_standalone_tb
                 retired_count++;
                 last_retired_pc = VER_RETIRE_PC;
                 last_retired_thumb = VER_RETIRE_THUMB;
+                // LDM-to-PC commits the redirect one cycle before its final
+                // retirement; the existing debug observer retains that actual
+                // target until the destination starts. Direct PC writes and
+                // LDR-to-PC also have the same-edge flush sampled above.
+                if (commit_flush)
+                    checkpoint_next_pc = commit_flush_pc;
+                else if (u_dut.ice_core_pc_redirect_pending)
+                    checkpoint_next_pc = u_dut.ice_core_pc_redirect_pc;
+                else
+                    checkpoint_next_pc = VER_RETIRE_PC + (VER_RETIRE_THUMB ? 32'd2 : 32'd4);
+                for (int slot = 0; slot < checkpoint_count; slot++) begin
+                    if (!checkpoint_done[slot]) begin
+                        if (checkpoint_half_valid[slot]) begin
+                            // A four-byte classic Thumb BL is two real
+                            // halfword retirements. Join only consecutive
+                            // observations of those exact instruction PCs.
+                            if (VER_RETIRE_THUMB && !VER_RETIRE_EXCEPTION_VALID
+                                && VER_RETIRE_PC == checkpoint_table[slot][31:0] + 32'd2)
+                                emit_checkpoint(slot, checkpoint_table[slot][31:0],
+                                    {VER_RETIRE_OPCODE[15:0], checkpoint_first_half[slot]}, 4);
+                            else
+                                unavailable_checkpoint(slot, "nonconsecutive_thumb_retirement");
+                        end else if (VER_RETIRE_PC == checkpoint_table[slot][31:0]) begin
+                            if (VER_RETIRE_EXCEPTION_VALID)
+                                unavailable_checkpoint(slot, "exception_entry_boundary");
+                            else if (VER_RETIRE_THUMB && checkpoint_table[slot][63:32] == 4) begin
+                                checkpoint_first_half[slot] = VER_RETIRE_OPCODE[15:0];
+                                checkpoint_half_valid[slot] = 1'b1;
+                            end else if (checkpoint_table[slot][63:32] == (VER_RETIRE_THUMB ? 2 : 4))
+                                emit_checkpoint(slot, VER_RETIRE_PC, VER_RETIRE_OPCODE,
+                                    VER_RETIRE_THUMB ? 2 : 4);
+                            else
+                                unavailable_checkpoint(slot, "retirement_width_mismatch");
+                        end
+                    end
+                end
             end
             if (VER_RETIRE_VALID && VER_RETIRE_PC == stop_pc
                 && !VER_RETIRE_EXCEPTION_VALID && sequential_completion_nop()) begin
@@ -317,6 +424,23 @@ module arm7tdmis_standalone_tb
         void'($value$plusargs("MEMORY_BASE=%h", memory_base));
         void'($value$plusargs("MEMORY_LENGTH=%d", memory_length));
         void'($value$plusargs("MAX_CYCLES=%d", max_cycles));
+        void'($value$plusargs("CHECKPOINT_COUNT=%d", checkpoint_count));
+        if (checkpoint_count < 0 || checkpoint_count > 65536)
+            $fatal(1, "[standalone] invalid checkpoint count");
+        if (checkpoint_count != 0) begin
+            if (!$value$plusargs("CHECKPOINTS=%s", checkpoint_file))
+                $fatal(1, "[standalone] missing CHECKPOINTS");
+            program_fd = $fopen(checkpoint_file, "r");
+            if (program_fd == 0) $fatal(1, "[standalone] cannot open CHECKPOINTS");
+            $fclose(program_fd);
+            $readmemh(checkpoint_file, checkpoint_table, 0, checkpoint_count - 1);
+            for (int slot = 0; slot < checkpoint_count; slot++) begin
+                checkpoint_done[slot] = 1'b0;
+                checkpoint_half_valid[slot] = 1'b0;
+                if (!(checkpoint_table[slot][63:32] == 2 || checkpoint_table[slot][63:32] == 4))
+                    $fatal(1, "[standalone] invalid checkpoint width");
+            end
+        end
         assertion_result_enabled = $value$plusargs(
             "ASSERTION_RESULT_ADDRESS=%h", assertion_result_address);
         if (MEMORY_WORDS <= 0 || (MEMORY_WORDS & (MEMORY_WORDS - 1)) != 0)
@@ -335,13 +459,11 @@ module arm7tdmis_standalone_tb
                         && assertion_result_address < IWRAM_BASE + IWRAM_BYTES))))
             $fatal(1, "[standalone] invalid guest assertion receipt address");
         // Some simulators only warn when $readmemh cannot open its input.
-        // Reject that case before executing the zero-initialized RAM.
+        // Reject that case before executing the sparse ELF load.
         program_fd = $fopen(program_hex, "r");
         if (program_fd == 0) $fatal(1, "[standalone] cannot open PROGRAM_HEX");
         if ($fgetc(program_fd) == -1) $fatal(1, "[standalone] empty PROGRAM_HEX");
         $fclose(program_fd);
-        for (int word = 0; word < MEMORY_WORDS; word++) u_mem.mem[word] = 0;
-        for (int word = 0; word < IWRAM_BYTES / 4; word++) u_iwram.mem[word] = 0;
         $readmemh(program_hex, u_mem.mem);
         if ($value$plusargs("IWRAM_HEX=%s", iwram_hex)) begin
             program_fd = $fopen(iwram_hex, "r");
